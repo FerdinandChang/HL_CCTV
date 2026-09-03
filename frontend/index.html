@@ -37,9 +37,11 @@
                     </select>
                 </div>
 
-                <span id="source-badge" class="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
-                    讀取中...
-                </span>
+                <!-- 報表匯出按鈕 -->
+                <a href="/api/reports/export" download class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg border border-emerald-500 text-xs font-bold shadow transition flex items-center space-x-1">
+                    <span>📊 匯出稽查報表</span>
+                </a>
+
                 <button onclick="triggerScan()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 text-xs transition">
                     🔄 重掃 .ts 錄影
                 </button>
@@ -102,6 +104,25 @@
 
             <!-- 右側即時狀態與教學面板 (佔 1 欄) -->
             <div class="space-y-6">
+                <!-- 硬碟容量健康狀態卡片 (新功能) -->
+                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-400 font-bold flex items-center space-x-1">
+                            <span>💾 錄影磁碟容量 (<span id="disk-drive">D:</span>)</span>
+                        </span>
+                        <button onclick="triggerCleanup()" class="text-[11px] text-cyan-400 hover:text-cyan-300 underline">
+                            釋放舊檔
+                        </button>
+                    </div>
+                    <div class="flex justify-between text-xs font-mono text-slate-300 mb-1.5">
+                        <span>剩餘: <b id="disk-free" class="text-emerald-400">-- GB</b></span>
+                        <span>已用: <span id="disk-pct">--%</span></span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                        <div id="disk-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
                 <!-- 即時狀態卡片 -->
                 <div id="status-card" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl text-center transition-all">
                     <h2 class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">當前判視狀態</h2>

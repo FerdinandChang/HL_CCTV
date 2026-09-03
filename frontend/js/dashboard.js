@@ -14,10 +14,12 @@ window.addEventListener("DOMContentLoaded", () => {
     fetchAlerts();
     fetchRefs();
     fetchVideos();
+    fetchDiskUsage();
 
     setInterval(fetchStatus, 1500);
     setInterval(fetchAlerts, 5000);
     setInterval(fetchVideos, 10000);
+    setInterval(fetchDiskUsage, 30000);
 });
 
 function onCameraChange() {
@@ -189,6 +191,39 @@ function fetchStatus() {
             }
         })
         .catch(err => console.error("Status fetch error", err));
+}
+
+function fetchDiskUsage() {
+    fetch("/api/disk_usage")
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById("disk-drive").textContent = data.drive || "D:";
+            const freeEl = document.getElementById("disk-free");
+            freeEl.textContent = `${data.free_gb} GB`;
+            document.getElementById("disk-pct").textContent = `${data.used_pct}%`;
+            
+            const bar = document.getElementById("disk-bar");
+            bar.style.width = `${data.used_pct}%`;
+            if (data.is_low_space) {
+                bar.className = "bg-red-500 h-2 rounded-full transition-all duration-500 animate-pulse";
+                freeEl.className = "text-red-400 font-bold";
+            } else {
+                bar.className = "bg-emerald-500 h-2 rounded-full transition-all duration-500";
+                freeEl.className = "text-emerald-400";
+            }
+        })
+        .catch(err => console.error("Disk usage fetch error", err));
+}
+
+function triggerCleanup() {
+    if (!confirm("確定要手動觸發清理 14 天前的無違規錄影檔嗎？")) return;
+    fetch("/api/retention/cleanup", { method: "POST" })
+        .then(r => r.json())
+        .then(data => {
+            alert(`清理完成！共刪除 ${data.purged_count} 支舊影片，釋放 ${data.freed_mb} MB 空間。`);
+            fetchDiskUsage();
+            fetchVideos();
+        });
 }
 
 function saveRef(label) {

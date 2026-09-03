@@ -1,7 +1,10 @@
 ﻿import io
+import csv
 import time
+import threading
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Response, Request
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Response, Request, Query
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,11 +12,12 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from .config import Config
-from .database import init_db, get_recent_alerts, get_history_stats, get_video_records
+from .database import init_db, get_recent_alerts, get_history_stats, get_video_records, get_connection
 from .modules.processor import RoadAnalyzer
 from .modules.watcher import TSVideoWatcher
+from .modules.retention import DiskRetentionManager
 
-app = FastAPI(title="HL_CCTV 工地路污判視系統", version="1.0.0")
+app = FastAPI(title="HL_CCTV 工地路污判視系統", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,23 +39,35 @@ for cam_id in cameras_cfg:
 # 啟動錄影檔監聽
 watcher = TSVideoWatcher(analyzers, r"D:\錄影\Record")
 
+# 啟動硬碟空間守護器
+retention_mgr = DiskRetentionManager(r"D:\錄影\Record", min_free_gb=25.0, retention_days=14)
+
+def retention_daemon_loop():
+    """定時每小時巡檢一次硬碟容量"""
+    while True:
+        try:
+            retention_mgr.cleanup_old_records()
+        except Exception as e:
+            print(f"[Retention Daemon Error] {e}")
+        time.sleep(3600)
+
+threading.Thread(target=retention_daemon_loop, daemon=True).start()
+
 class ROIUpdateRequest(BaseModel):
     cam_id: Optional[str] = "cam_10"
     roi: List[List[float]]
 
 class SaveRefRequest(BaseModel):
     cam_id: Optional[str] = "cam_10"
-    label: str  # "clean" 或 "muddy"
+    label: str
 
 @app.get("/api/cameras")
 def get_cameras():
-    """取得所有相機清單"""
     cfg = Config.load_camera_config()
     return [{"id": k, "name": v.get("name", k)} for k, v in cfg.items()]
 
 @app.get("/api/status")
 def get_current_status(cam_id: str = "cam_10"):
-    """取得特定相機即時路況判讀資訊"""
     analyzer = analyzers.get(cam_id, list(analyzers.values())[0])
     return {
         "cam_id": analyzer.cam_id,
@@ -68,7 +84,6 @@ def get_current_status(cam_id: str = "cam_10"):
 
 @app.get("/api/stream/live")
 def get_live_stream(cam_id: str = "cam_10"):
-    """MJPEG 即時影像串流端點"""
     analyzer = analyzers.get(cam_id, list(analyzers.values())[0])
     def frame_generator():
         while True:
@@ -147,6 +162,58 @@ def list_video_records(limit: int = 30):
 def trigger_scan_videos():
     watcher.scan_historical_records()
     return {"success": True, "message": "已觸發錄影目錄重新掃描"}
+
+# ── 硬碟空間與儲存管理 API ───────────────────────────────────────
+@app.get("/api/disk_usage")
+def get_disk_usage():
+    """取得錄影儲存硬碟空間狀況"""
+    return retention_mgr.get_disk_status()
+
+@app.post("/api/retention/cleanup")
+def manual_cleanup_retention():
+    """手動觸發清理過期無違規影片"""
+    result = retention_mgr.cleanup_old_records(force=True)
+    return {"success": True, **result}
+
+# ── 報表匯出 API (Excel 相容 CSV) ─────────────────────────────────
+@app.get("/api/reports/export")
+def export_alerts_report(days: int = 7):
+    """匯出最近 N 天的路污違規事件報表 (CSV 格式，UTF-8 BOM)"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, cam_id, timestamp, status, confidence, edge_density, snapshot_file, video_file, video_sec
+            FROM alerts
+            ORDER BY id DESC
+        ''')
+        rows = cursor.fetchall()
+
+    output = io.StringIO()
+    # 寫入 UTF-8 BOM 避免 Excel 開啟繁體中文亂碼
+    output.write("\ufeff")
+    writer = csv.writer(output)
+    writer.writerow(["事件編號", "相機名稱", "發生時間", "判定狀態", "信心度(%)", "紋理密度", "快照檔名", "對應錄影檔", "影片內秒數"])
+    for r in rows:
+        cam_name = "出入口 (10.0.0.10)" if r["cam_id"] == "cam_10" else "外圍車道 (10.0.0.11)"
+        writer.writerow([
+            r["id"],
+            cam_name,
+            r["timestamp"],
+            r["status"],
+            r["confidence"],
+            r["edge_density"],
+            r["snapshot_file"],
+            r["video_file"] or "--",
+            round(r["video_sec"], 1) if r["video_sec"] else "--"
+        ])
+
+    csv_data = output.getvalue().encode("utf-8-sig")
+    filename = f"HL_CCTV_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 frontend_dir = Config.PROJECT_ROOT / "frontend"
 if frontend_dir.exists():
