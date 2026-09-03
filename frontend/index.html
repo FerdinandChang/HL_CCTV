@@ -1,0 +1,164 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HL_CCTV 營建站路污智慧判視系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .pulse-alert {
+            animation: pulse-red 1.5s infinite;
+        }
+        @keyframes pulse-red {
+            0%, 100% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+            50% { border-color: rgba(239, 68, 68, 0.3); box-shadow: 0 0 5px rgba(239, 68, 68, 0.2); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen">
+    <div class="max-w-7xl mx-auto p-4 lg:p-6">
+        <!-- 頂部列 -->
+        <header class="flex flex-wrap justify-between items-center gap-4 mb-6 border-b border-slate-800 pb-4">
+            <div class="flex items-center space-x-3">
+                <span class="bg-emerald-500 w-3 h-3 rounded-full animate-ping"></span>
+                <h1 class="text-2xl font-black tracking-wide text-emerald-400">
+                    HL_CCTV <span class="text-white font-normal text-lg">營建站路污即時監測</span>
+                </h1>
+                <span class="bg-slate-800 text-xs px-2.5 py-1 rounded text-slate-400 font-mono">1080p 15fps</span>
+            </div>
+            
+            <div class="flex items-center space-x-3 text-sm">
+                <!-- 相機切換器 -->
+                <div class="flex items-center space-x-2">
+                    <label class="text-xs text-slate-400">鏡頭:</label>
+                    <select id="camera-select" onchange="onCameraChange()" class="bg-slate-900 border border-slate-700 text-emerald-400 rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-emerald-500">
+                        <option value="cam_10">營建站出入口 (10.0.0.10)</option>
+                        <option value="cam_11">營建站外圍車道 (10.0.0.11)</option>
+                    </select>
+                </div>
+
+                <span id="source-badge" class="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
+                    讀取中...
+                </span>
+                <button onclick="triggerScan()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 text-xs transition">
+                    🔄 重掃 .ts 錄影
+                </button>
+            </div>
+        </header>
+
+        <!-- 主體網格 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 視訊與 ROI 區域 (佔 2 欄) -->
+            <div class="lg:col-span-2 space-y-4">
+                <div id="video-wrapper" class="bg-slate-900 p-2 rounded-2xl border border-slate-800 shadow-2xl relative">
+                    <div class="relative bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center">
+                        <!-- 即時 MJPEG 影像 -->
+                        <img id="live-stream" src="/api/stream/live?cam_id=cam_10" alt="即時串流" class="w-full h-full object-contain">
+                        
+                        <!-- ROI 互動 Canvas -->
+                        <canvas id="roi-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+                    </div>
+                </div>
+
+                <!-- 畫布控制按鈕 -->
+                <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400">
+                        <p>💡 點擊「編輯 ROI」可在畫面上拖拉多邊形頂點，自訂洗車區與路面檢測範圍。</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button id="btn-edit-roi" onclick="toggleEditROI()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition">
+                            ✏️ 編輯 ROI
+                        </button>
+                        <button id="btn-save-roi" onclick="saveROI()" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg transition">
+                            💾 儲存 ROI
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 錄影檔 (.ts) 批次分析進度表 -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center">
+                        <span>📁 30 分鐘 .ts 錄影檔分析清單</span>
+                        <span class="text-xs text-slate-500 font-normal ml-2">(儲存於 D:\錄影\Record\)</span>
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left text-slate-300">
+                            <thead class="text-slate-500 border-b border-slate-800 uppercase">
+                                <tr>
+                                    <th class="py-2 px-3">檔名</th>
+                                    <th class="py-2 px-3">狀態</th>
+                                    <th class="py-2 px-3">抽幀數</th>
+                                    <th class="py-2 px-3">髒污次數</th>
+                                    <th class="py-2 px-3">處理時間</th>
+                                </tr>
+                            </thead>
+                            <tbody id="video-table-body">
+                                <tr><td colspan="5" class="py-4 text-center text-slate-500">尚無錄影檔紀錄</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側即時狀態與教學面板 (佔 1 欄) -->
+            <div class="space-y-6">
+                <!-- 即時狀態卡片 -->
+                <div id="status-card" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl text-center transition-all">
+                    <h2 class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">當前判視狀態</h2>
+                    <div id="status-text" class="text-3xl font-black tracking-tight text-white mb-2">--</div>
+                    <div class="flex justify-center items-center space-x-4 text-xs text-slate-400 font-mono">
+                        <div>信心度: <span id="conf-val" class="text-emerald-400 font-bold">0.0%</span></div>
+                        <div>紋理密度: <span id="edge-val" class="text-cyan-400 font-bold">0.000</span></div>
+                    </div>
+                    
+                    <!-- 泥濘計數進度條 -->
+                    <div class="mt-5 pt-4 border-t border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400 mb-1">
+                            <span>連續髒污累積:</span>
+                            <span id="streak-text" class="font-bold">0 / 3 幀</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                            <div id="streak-bar" class="bg-red-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 手動教學標註工具 -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3">🎯 樣本教學 (Teaching)</h3>
+                    <p class="text-xs text-slate-400 mb-4">在路面狀況良好或確實出現髒污時，點擊按鈕採集當前畫面作為比對基準：</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="saveRef('clean')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg transition flex items-center justify-center space-x-1">
+                            <span>✅ 標記乾淨路面</span>
+                        </button>
+                        <button onclick="saveRef('muddy')" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg transition flex items-center justify-center space-x-1">
+                            <span>⚠️ 標記泥濘髒污</span>
+                        </button>
+                    </div>
+
+                    <!-- 樣本展示庫 -->
+                    <div class="mt-4 pt-4 border-t border-slate-800">
+                        <h4 class="text-xs font-semibold text-slate-400 mb-2">已儲存樣本清單:</h4>
+                        <div id="refs-container" class="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                            <!-- JS 動態填入 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最近警報事件與快照簿 -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-slate-300">🚨 最近路污警報截圖</h3>
+                        <span id="alert-count" class="text-xs bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-bold">0 筆</span>
+                    </div>
+                    <div id="alerts-list" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                        <div class="text-center py-6 text-slate-500 text-xs">目前無警報紀錄</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

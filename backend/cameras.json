@@ -1,0 +1,36 @@
+﻿{
+    "cam_10": {
+        "name": "營建站出入口 (10.0.0.10)",
+        "source": "D:\\錄影\\Record\\10.0.0.10\\2026-07-27\\20260727145550.ts",
+        "roi": [
+            [0.05, 0.65],
+            [0.60, 0.65],
+            [0.55, 0.98],
+            [0.02, 0.98]
+        ],
+        "start_time": "06:00",
+        "end_time": "20:00",
+        "muddy_streak_threshold": 3,
+        "blocked_time_threshold": 3.0,
+        "edge_threshold": 0.025,
+        "confidence_threshold": 0.3,
+        "alert_cooldown": 300
+    },
+    "cam_11": {
+        "name": "營建站外圍車道 (10.0.0.11)",
+        "source": "D:\\錄影\\Record\\10.0.0.11\\2026-07-27\\20260727145557.ts",
+        "roi": [
+            [0.45, 0.50],
+            [0.98, 0.55],
+            [0.98, 0.98],
+            [0.55, 0.98]
+        ],
+        "start_time": "06:00",
+        "end_time": "20:00",
+        "muddy_streak_threshold": 3,
+        "blocked_time_threshold": 3.0,
+        "edge_threshold": 0.025,
+        "confidence_threshold": 0.3,
+        "alert_cooldown": 300
+    }
+}
