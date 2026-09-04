@@ -126,26 +126,58 @@
                     </div>
                 </div>
 
-                <!-- 即時狀態卡片 -->
-                <div id="status-card" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl text-center transition-all">
-                    <h2 class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">當前判視狀態</h2>
-                    <div id="status-text" class="text-3xl font-black tracking-tight text-white mb-2">--</div>
-                    <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 font-mono my-2 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-                        <div>路面信心: <span id="conf-val" class="text-emerald-400 font-bold">0.0%</span></div>
-                        <div>紋理密度: <span id="edge-val" class="text-cyan-400 font-bold">0.000</span></div>
-                        <div>污染面積: <span id="area-val" class="text-rose-400 font-bold">0.0%</span></div>
-                        <div>車斗防塵: <span id="truck-bed-val" class="text-amber-400 font-bold">無卡車</span></div>
-                        <div class="col-span-2 text-left pt-1 border-t border-slate-800/80">行經車輛: <span id="suspect-veh-val" class="text-sky-400 font-bold">無行經車輛</span></div>
+                <!-- 即時狀態卡片 (重構排版：2x2 指標方塊與雙語狀態徽章) -->
+                <div id="status-card" class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl transition-all space-y-3">
+                    <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                        <h2 class="text-xs uppercase tracking-wider text-slate-400 font-bold flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>即時 AI 判視狀態</span>
+                        </h2>
+                        <span id="cam-tag" class="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">CAM_10</span>
+                    </div>
+
+                    <!-- 主狀態徽章 (不折行、大器質感) -->
+                    <div id="status-badge" class="py-3 px-4 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col items-center justify-center text-center shadow-inner">
+                        <div id="status-text-zh" class="text-xl font-black tracking-wide text-white mb-0.5">系統初始化中...</div>
+                        <div id="status-text-en" class="text-[11px] font-mono text-slate-500">Initializing...</div>
+                    </div>
+
+                    <!-- 2x2 指標方塊 (數字獨立、版面乾淨不擁擠) -->
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+                            <div class="text-[11px] text-slate-400 mb-0.5">路面信心度</div>
+                            <div id="conf-val" class="text-lg font-black text-emerald-400 font-mono">0.0%</div>
+                        </div>
+                        <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+                            <div class="text-[11px] text-slate-400 mb-0.5">紋理邊緣密度</div>
+                            <div id="edge-val" class="text-lg font-black text-cyan-400 font-mono">0.000</div>
+                        </div>
+                        <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+                            <div class="text-[11px] text-slate-400 mb-0.5">路面污染面積</div>
+                            <div id="area-val" class="text-lg font-black text-rose-400 font-mono">0.0%</div>
+                        </div>
+                        <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 flex flex-col justify-between">
+                            <div class="text-[11px] text-slate-400 mb-0.5">車斗防塵設施</div>
+                            <div id="truck-bed-val" class="text-sm font-bold text-amber-400 truncate">無卡車</div>
+                        </div>
+                    </div>
+
+                    <!-- 行經車輛科技執法條 -->
+                    <div class="flex items-center justify-between bg-slate-950/90 p-2.5 rounded-xl border border-slate-800 text-xs font-mono">
+                        <span class="text-slate-400 flex items-center space-x-1.5">
+                            <span>🚛</span><span>行經車輛:</span>
+                        </span>
+                        <span id="suspect-veh-val" class="text-sky-400 font-bold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800/80 max-w-[170px] truncate">無行經車輛</span>
                     </div>
                     
                     <!-- 泥濘計數進度條 -->
-                    <div class="mt-5 pt-4 border-t border-slate-800">
-                        <div class="flex justify-between text-xs text-slate-400 mb-1">
+                    <div class="pt-2 border-t border-slate-800">
+                        <div class="flex justify-between text-xs text-slate-400 mb-1.5">
                             <span>連續髒污累積:</span>
-                            <span id="streak-text" class="font-bold">0 / 3 幀</span>
+                            <span id="streak-text" class="font-bold text-slate-200 font-mono">0 / 3 幀</span>
                         </div>
-                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                            <div id="streak-bar" class="bg-red-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                            <div id="streak-bar" class="bg-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>

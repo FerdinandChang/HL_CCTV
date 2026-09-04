@@ -166,59 +166,77 @@ function fetchStatus() {
         .then(r => r.json())
         .then(data => {
             const statusCard = document.getElementById("status-card");
-            const statusText = document.getElementById("status-text");
+            const statusTextZh = document.getElementById("status-text-zh");
+            const statusTextEn = document.getElementById("status-text-en");
+            const statusBadge = document.getElementById("status-badge");
+            const camTag = document.getElementById("cam-tag");
+            if (camTag) camTag.textContent = currentCamId.toUpperCase();
+
             const confVal = document.getElementById("conf-val");
             const edgeVal = document.getElementById("edge-val");
-            const streakText = document.getElementById("streak-text");
-            const streakBar = document.getElementById("streak-bar");
-            const sourceBadge = document.getElementById("source-badge");
-
             const areaVal = document.getElementById("area-val");
             const truckBedVal = document.getElementById("truck-bed-val");
+            const suspectVehVal = document.getElementById("suspect-veh-val");
+            const streakText = document.getElementById("streak-text");
+            const streakBar = document.getElementById("streak-bar");
 
-            if (statusText) statusText.textContent = data.status || "--";
-            if (confVal) confVal.textContent = (data.confidence || 0) + "%";
-            if (edgeVal) edgeVal.textContent = data.edge_density || "0.000";
-            if (areaVal) areaVal.textContent = (data.muddy_area_pct || 0) + "%";
+            // 格式化主狀態與雙語徽章
+            const rawStatus = data.status || "";
+            let zhStatus = "路面清潔良好";
+            let badgeStyle = "bg-emerald-950/60 border-emerald-800 text-emerald-400";
+
+            if (data.is_alert || rawStatus.includes("MUDDY")) {
+                zhStatus = "🚨 檢測到路面泥濘髒污";
+                badgeStyle = "bg-red-950/80 border-red-700 text-red-400 animate-pulse";
+                if (statusCard) statusCard.classList.add("pulse-alert");
+            } else if (rawStatus.includes("Blocked")) {
+                zhStatus = "🚗 車輛 / 人員通行遮擋";
+                badgeStyle = "bg-amber-950/70 border-amber-800 text-amber-400";
+                if (statusCard) statusCard.classList.remove("pulse-alert");
+            } else if (rawStatus.includes("CLEAN")) {
+                zhStatus = "✅ 路面清潔良好";
+                badgeStyle = "bg-emerald-950/60 border-emerald-800 text-emerald-400";
+                if (statusCard) statusCard.classList.remove("pulse-alert");
+            } else {
+                zhStatus = "🔍 監測採集中";
+                badgeStyle = "bg-slate-950/80 border-slate-800 text-slate-300";
+                if (statusCard) statusCard.classList.remove("pulse-alert");
+            }
+
+            if (statusTextZh) statusTextZh.textContent = zhStatus;
+            if (statusTextEn) statusTextEn.textContent = rawStatus || "--";
+            if (statusBadge) statusBadge.className = `py-3 px-4 rounded-xl border flex flex-col items-center justify-center text-center shadow-inner ${badgeStyle}`;
+
+            // 指標方塊數值
+            if (confVal) confVal.textContent = (data.confidence || 0).toFixed(1) + "%";
+            if (edgeVal) edgeVal.textContent = (data.edge_density || 0).toFixed(3);
+            if (areaVal) areaVal.textContent = (data.muddy_area_pct || 0).toFixed(1) + "%";
+
+            // 車斗防塵狀態 (美化標籤)
             if (truckBedVal) {
-                truckBedVal.textContent = data.truck_bed_status || "無卡車";
-                if ((data.truck_bed_status || "").includes("UNCOVERED")) {
-                    truckBedVal.className = "text-red-400 font-bold animate-pulse";
-                } else if ((data.truck_bed_status || "").includes("COVERED")) {
-                    truckBedVal.className = "text-emerald-400 font-bold";
+                const bedStr = data.truck_bed_status || "無卡車";
+                if (bedStr.includes("UNCOVERED")) {
+                    truckBedVal.innerHTML = `<span class="text-rose-400 font-bold flex items-center space-x-1"><span>⚠️ 未覆蓋</span></span>`;
+                } else if (bedStr.includes("COVERED")) {
+                    truckBedVal.innerHTML = `<span class="text-emerald-400 font-bold flex items-center space-x-1"><span>✅ 已覆蓋</span></span>`;
                 } else {
-                    truckBedVal.className = "text-slate-400 font-bold";
+                    truckBedVal.innerHTML = `<span class="text-slate-400 font-normal">無卡車</span>`;
                 }
             }
 
-            const suspectVehVal = document.getElementById("suspect-veh-val");
-            if (suspectVehVal) suspectVehVal.textContent = data.suspect_vehicle || "無行經車輛";
-
-            if (sourceBadge && data.name) {
-                const srcName = (data.video_source || "").split('\\').pop();
-                sourceBadge.textContent = `${data.name} | ${srcName}`;
+            // 行經車輛鎖定
+            if (suspectVehVal) {
+                const sVeh = data.suspect_vehicle || "無行經車輛";
+                suspectVehVal.textContent = sVeh;
+                suspectVehVal.className = sVeh.includes("無") 
+                    ? "text-slate-500 font-normal text-xs" 
+                    : "text-sky-300 font-bold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800 text-xs";
             }
 
             if (streakText) streakText.textContent = `${data.streak || 0} / ${data.streak_threshold || 3} 幀`;
             if (streakBar) {
                 const pct = Math.min(100, ((data.streak || 0) / (data.streak_threshold || 3)) * 100);
                 streakBar.style.width = pct + "%";
-            }
-
-            if (statusCard && statusText) {
-                if (data.is_alert) {
-                    statusCard.classList.add("pulse-alert");
-                    statusText.className = "text-3xl font-black text-red-500 mb-2";
-                } else if ((data.status || "").includes("CLEAN")) {
-                    statusCard.classList.remove("pulse-alert");
-                    statusText.className = "text-3xl font-black text-emerald-400 mb-2";
-                } else if ((data.status || "").includes("Blocked")) {
-                    statusCard.classList.remove("pulse-alert");
-                    statusText.className = "text-3xl font-black text-amber-400 mb-2";
-                } else {
-                    statusCard.classList.remove("pulse-alert");
-                    statusText.className = "text-3xl font-black text-slate-300 mb-2";
-                }
             }
         })
         .catch(err => console.error("Status fetch error", err));
