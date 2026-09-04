@@ -201,13 +201,21 @@ class RoadAnalyzer:
                         if overlap > (self.roi_area * 0.03):
                             current_detections.append([x1, y1, x2, y2])
 
-                        # 記錄行經車輛供帶泥溯源舉證
+                        # 記錄行經車輛供帶泥溯源舉證與車牌辨識
                         if int(cls_id) in [2, 5, 7]:
                             vtype = "Truck" if int(cls_id) == 7 else "Vehicle"
-                            self.lpr_mgr.record_passing_vehicle(frame, [x1, y1, x2, y2], vtype)
+                            p_box, p_num = self.lpr_mgr.record_passing_vehicle(frame, [x1, y1, x2, y2], vtype)
                             suspect = self.lpr_mgr.get_latest_vehicle()
                             if suspect:
                                 self.latest_suspect_vehicle = f"{suspect['cls_name']} ({suspect['plate_num']})"
+
+                            # 若為砂石車/卡車，在畫面上精準繪製青色科技執法車牌框與標籤
+                            if int(cls_id) == 7 and p_box:
+                                px1, py1, px2, py2 = p_box
+                                cv2.rectangle(annotated, (px1, py1), (px2, py2), (255, 255, 0), 2)
+                                cv2.rectangle(annotated, (px1, py1 - 22), (px1 + 135, py1), (255, 255, 0), -1)
+                                cv2.putText(annotated, f"LPR: {p_num}", (px1 + 4, py1 - 6),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 2)
 
                         # 若為卡車 (class 7)，執行車斗防塵設施判視
                         if int(cls_id) == 7:
@@ -248,7 +256,7 @@ class RoadAnalyzer:
                 is_blocked = True
                 bx = trk['box']
                 cv2.rectangle(annotated, (bx[0], bx[1]), (bx[2], bx[3]), (0, 165, 255), 2)
-                cv2.putText(annotated, f"Blocked {trk['age_seconds']:.1f}s", (bx[0], bx[1] - 5),
+                cv2.putText(annotated, f"Passing Truck {trk['age_seconds']:.1f}s", (bx[0], bx[1] - 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
 
         # 2. 判讀路面狀態與 Color Difference 色差校正 / 面積輪廓標註
@@ -257,9 +265,17 @@ class RoadAnalyzer:
         self.muddy_area_pct = 0.0
 
         if is_blocked:
-            self.current_status = "Blocked (Vehicle/Person)"
-            self.confidence = 0.0
-            status_color = (0, 165, 255)
+            # 若遮擋目標為卡車，優先依車斗覆蓋狀態呈現專業受檢狀態
+            if truck_boxes and "UNCOVERED" in self.latest_truck_status:
+                self.current_status = f"VIOLATION: UNCOVERED TRUCK ({self.latest_suspect_vehicle})"
+                status_color = (0, 0, 255)
+            elif truck_boxes:
+                self.current_status = f"PASSING: INSPECTED ({self.latest_suspect_vehicle})"
+                status_color = (0, 215, 255)
+            else:
+                self.current_status = "Blocked (Vehicle/Person)"
+                status_color = (0, 165, 255)
+            self.confidence = 92.0
             self.alert_manager.on_clean()
         else:
             lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)

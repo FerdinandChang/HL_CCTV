@@ -28,7 +28,8 @@ def generate_acceptance_video():
         corners = np.array([img[5, 5], img[5, iw-6], img[ih-6, 5], img[ih-6, iw-6]], dtype=float)
         bg_color = corners.mean(axis=0)
         diff = np.linalg.norm(img.astype(float) - bg_color, axis=2)
-        raw_mask = (diff > 26).astype(np.uint8) * 255
+        # 提高閾值至 38，徹底濾除原圖自帶的淺灰地面投影
+        raw_mask = (diff > 38).astype(np.uint8) * 255
         
         # 尋找卡車外部主輪廓並實心填充
         contours, _ = cv2.findContours(raw_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -49,10 +50,10 @@ def generate_acceptance_video():
     # 繪製高辨識度台灣白底黑字車牌
     def attach_license_plate(truck_img, plate_str, box):
         x1, y1, x2, y2 = box
-        cv2.rectangle(truck_img, (x1, y1), (x2, y2), (250, 250, 250), -1)
-        cv2.rectangle(truck_img, (x1, y1), (x2, y2), (10, 10, 10), 2)
-        font_scale = (y2 - y1) / 30.0
-        cv2.putText(truck_img, plate_str, (x1 + 6, y2 - 8),
+        cv2.rectangle(truck_img, (x1, y1), (x2, y2), (252, 252, 252), -1)
+        cv2.rectangle(truck_img, (x1, y1), (x2, y2), (15, 15, 15), 2)
+        font_scale = (y2 - y1) / 28.0
+        cv2.putText(truck_img, plate_str, (x1 + 6, y2 - 7),
                     cv2.FONT_HERSHEY_DUPLEX, font_scale, (10, 10, 10), 2)
 
     # HAA-5678 (未覆蓋防塵布違規車輛)
@@ -115,10 +116,10 @@ def generate_acceptance_video():
             alpha = (m_res[sy1:sy2, sx1:sx2].astype(float) / 255.0)
             alpha_3 = cv2.merge([alpha, alpha, alpha])
 
-            # 車底動態接觸陰影
-            shadow_h = int(th * 0.10)
+            # 車底動態接觸陰影 (半透明黑影，非灰色塊)
+            shadow_h = int(th * 0.08)
             sy1_s = max(0, dy2 - shadow_h)
-            bg[sy1_s:dy2, dx1:dx2] = (bg[sy1_s:dy2, dx1:dx2].astype(float) * 0.60).astype(np.uint8)
+            bg[sy1_s:dy2, dx1:dx2] = (bg[sy1_s:dy2, dx1:dx2].astype(float) * 0.65).astype(np.uint8)
 
             # Alpha 融合成像
             target = bg[dy1:dy2, dx1:dx2]
@@ -140,9 +141,16 @@ def generate_acceptance_video():
         cv2.putText(frame, "1080p 15fps", (430, 52),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 130), 1)
 
-        # 2. 劇本排程:
-        # A. 0~4秒 (幀 0~60): 平靜路面 (CLEAN)
-        # B. 4~12秒 (幀 61~180): 合規卡車 KPA-8891 經過 (COVERED)
+        # 2. 地面泥濘圖層 (關鍵：先繪製於地面，卡車隨後壓在泥濘上方，避免泥痕穿模覆蓋車身)
+        if f_idx >= 235:
+            p_mud = min(1.0, (f_idx - 235) / 55.0) # 3.5秒內完全鋪展
+            m_alpha = (mud_layer[:, :, 3].astype(float) / 255.0) * p_mud
+            m_alpha_3 = cv2.merge([m_alpha, m_alpha, m_alpha])
+            m_rgb = mud_layer[:, :, :3]
+            frame = (m_rgb * m_alpha_3 + frame * (1.0 - m_alpha_3)).astype(np.uint8)
+
+        # 3. 劇本車輛行駛渲染 (疊加於地面之上):
+        # A. 4~12秒 (幀 61~180): 合規卡車 KPA-8891 經過 (COVERED)
         if 61 <= f_idx <= 180:
             p = (f_idx - 61) / (180 - 61)
             cx = int(220 + p * 620)
@@ -150,21 +158,13 @@ def generate_acceptance_video():
             sc = 0.42 + p * 0.28
             blend_truck(frame, truck_cov, mask_cov, cx, cy, sc)
 
-        # C. 13~21秒 (幀 195~315): 違規砂石車 HAA-5678 駛出 (UNCOVERED)
+        # B. 13~21秒 (幀 195~315): 違規砂石車 HAA-5678 駛出 (UNCOVERED)
         if 195 <= f_idx <= 315:
             p = (f_idx - 195) / (315 - 195)
             cx = int(180 + p * 640)
             cy = int(710 + p * 230)
             sc = 0.45 + p * 0.30
             blend_truck(frame, truck_unc, mask_unc, cx, cy, sc)
-
-        # D. 16~30秒 (幀 240~450): 輪胎帶泥，路面泥濘逐步顯現並持續
-        if f_idx >= 240:
-            p_mud = min(1.0, (f_idx - 240) / 60.0) # 4秒內完全展開
-            m_alpha = (mud_layer[:, :, 3].astype(float) / 255.0) * p_mud
-            m_alpha_3 = cv2.merge([m_alpha, m_alpha, m_alpha])
-            m_rgb = mud_layer[:, :, :3]
-            frame = (m_rgb * m_alpha_3 + frame * (1.0 - m_alpha_3)).astype(np.uint8)
 
         out_1.write(frame)
         out_rec.write(frame)

@@ -217,6 +217,14 @@ function fetchStatus() {
                 zhStatus = "🚨 檢測到路面泥濘髒污";
                 badgeStyle = "bg-red-950/80 border-red-700 text-red-400 animate-pulse";
                 if (statusCard) statusCard.classList.add("pulse-alert");
+            } else if (rawStatus.includes("UNCOVERED TRUCK")) {
+                zhStatus = "⚠️ 砂石車違規：車斗未覆蓋";
+                badgeStyle = "bg-amber-950/80 border-amber-600 text-amber-400 animate-pulse";
+                if (statusCard) statusCard.classList.remove("pulse-alert");
+            } else if (rawStatus.includes("PASSING") || rawStatus.includes("INSPECTED")) {
+                zhStatus = "🚛 工程砂石車過站受檢中";
+                badgeStyle = "bg-cyan-950/80 border-cyan-700 text-cyan-400";
+                if (statusCard) statusCard.classList.remove("pulse-alert");
             } else if (rawStatus.includes("Blocked")) {
                 zhStatus = "🚗 車輛 / 人員通行遮擋";
                 badgeStyle = "bg-amber-950/70 border-amber-800 text-amber-400";
@@ -232,8 +240,8 @@ function fetchStatus() {
             }
 
             if (statusTextZh) statusTextZh.textContent = zhStatus;
-            if (statusTextEn) statusTextEn.textContent = rawStatus || "--";
-            if (statusBadge) statusBadge.className = `py-3 px-4 rounded-xl border flex flex-col items-center justify-center text-center shadow-inner ${badgeStyle}`;
+            if (statusTextEn) statusTextEn.textContent = rawStatus || "System Normal";
+            if (statusBadge) statusBadge.className = `py-3 px-4 rounded-xl border flex flex-col items-center justify-center text-center shadow-inner transition-all ${badgeStyle}`;
 
             // 指標方塊數值
             if (confVal) confVal.textContent = (data.confidence || 0).toFixed(1) + "%";
@@ -252,9 +260,10 @@ function fetchStatus() {
                 }
             }
 
-            // 行經車輛鎖定
+            // 行經車輛鎖定 (精美中文化)
             if (suspectVehVal) {
-                const sVeh = data.suspect_vehicle || "無行經車輛";
+                let sVeh = data.suspect_vehicle || "無行經車輛";
+                sVeh = sVeh.replace("Truck", "🚛 砂石車").replace("Vehicle", "🚗 車輛");
                 suspectVehVal.textContent = sVeh;
                 suspectVehVal.className = sVeh.includes("無") 
                     ? "text-slate-500 font-normal text-xs" 
