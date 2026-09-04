@@ -203,7 +203,7 @@ class RoadAnalyzer:
 
                         # 記錄行經車輛供帶泥溯源舉證
                         if int(cls_id) in [2, 5, 7]:
-                            vtype = "砂石車/卡車" if int(cls_id) == 7 else "工程車輛"
+                            vtype = "Truck" if int(cls_id) == 7 else "Vehicle"
                             self.lpr_mgr.record_passing_vehicle(frame, [x1, y1, x2, y2], vtype)
                             suspect = self.lpr_mgr.get_latest_vehicle()
                             if suspect:
@@ -335,17 +335,25 @@ class RoadAnalyzer:
                 status_color = (128, 128, 128)
                 self.alert_manager.on_clean()
 
-        # 3. 繪製標記與狀態儀表資訊
+        # 3. 繪製標記與狀態儀表資訊 (加入半透明 HUD 底板，防止與影片自帶文字重疊打架)
         contours, _ = cv2.findContours(self.roi_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(annotated, contours, -1, (255, 255, 0), 2)
-        cv2.putText(annotated, f"Road: {self.current_status}", (20, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, status_color, 2)
+
+        # 半透明 HUD 黑色底框
+        hud_overlay = annotated.copy()
+        cv2.rectangle(hud_overlay, (15, 15), (460, 145), (15, 20, 28), -1)
+        cv2.addWeighted(hud_overlay, 0.82, annotated, 0.18, 0, annotated)
+        cv2.rectangle(annotated, (15, 15), (460, 145), (55, 68, 85), 1)
+
+        # 排版整齊緊湊的 4 行 OSD 資訊
+        cv2.putText(annotated, f"Road: {self.current_status}", (25, 45),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.75, status_color, 2)
         cv2.putText(annotated, f"Conf: {self.confidence:.1f}% | Mud Area: {self.muddy_area_pct}%", 
-                    (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (240, 240, 240), 2)
-        cv2.putText(annotated, f"Truck Bed: {self.latest_truck_status}", (20, 110),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-        cv2.putText(annotated, f"Vehicle: {self.latest_suspect_vehicle}", (20, 145),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 200, 100), 2)
+                    (25, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.58, (220, 220, 220), 1)
+        cv2.putText(annotated, f"Truck Bed: {self.latest_truck_status}", (25, 105),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.58, (0, 255, 255), 1)
+        cv2.putText(annotated, f"Vehicle: {self.latest_suspect_vehicle}", (25, 133),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.58, (120, 200, 255), 1)
 
         if self.alert_manager.is_alert:
             cv2.putText(annotated, "! MUD DETECTED !", (20, 185), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
