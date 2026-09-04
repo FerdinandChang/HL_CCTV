@@ -17,7 +17,7 @@ from .modules.processor import RoadAnalyzer
 from .modules.watcher import TSVideoWatcher
 from .modules.retention import DiskRetentionManager
 
-app = FastAPI(title="HL_CCTV 工地路污判視系統", version="1.1.0")
+app = FastAPI(title="HL_CCTV 工地路污判視系統", version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,23 +27,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 初始化資料庫
 init_db()
 
-# 載入所有相機配置
 cameras_cfg = Config.load_camera_config()
 analyzers = {}
 for cam_id in cameras_cfg:
     analyzers[cam_id] = RoadAnalyzer(cam_id)
 
-# 啟動錄影檔監聽
 watcher = TSVideoWatcher(analyzers, r"D:\錄影\Record")
-
-# 啟動硬碟空間守護器
 retention_mgr = DiskRetentionManager(r"D:\錄影\Record", min_free_gb=25.0, retention_days=14)
 
 def retention_daemon_loop():
-    """定時每小時巡檢一次硬碟容量"""
     while True:
         try:
             retention_mgr.cleanup_old_records()
@@ -163,22 +157,47 @@ def trigger_scan_videos():
     watcher.scan_historical_records()
     return {"success": True, "message": "已觸發錄影目錄重新掃描"}
 
+# ── 影片直接播放串流與單片違規截圖查詢 (新功能) ──────────────────────────
+@app.get("/api/videos/stream/{filename}")
+def stream_video_file(filename: str):
+    """提供 .ts 影片檔案串流（供網頁播放器直接播放或調閱）"""
+    base_dir = Path(r"D:\錄影\Record")
+    matched = list(base_dir.rglob(filename))
+    if not matched or not matched[0].exists():
+        raise HTTPException(status_code=404, detail="找不到該錄影檔")
+    target_path = matched[0]
+    return FileResponse(
+        str(target_path),
+        media_type="video/mp2t",
+        filename=filename
+    )
+
+@app.get("/api/videos/{filename}/alerts")
+def get_video_alerts(filename: str):
+    """查詢特定 .ts 影片被抽查到的所有髒污違規截圖"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT * FROM alerts 
+            WHERE video_file = ? 
+            ORDER BY video_sec ASC
+        ''', (filename,))
+        rows = cursor.fetchall()
+        return {"alerts": [dict(r) for r in rows]}
+
 # ── 硬碟空間與儲存管理 API ───────────────────────────────────────
 @app.get("/api/disk_usage")
 def get_disk_usage():
-    """取得錄影儲存硬碟空間狀況"""
     return retention_mgr.get_disk_status()
 
 @app.post("/api/retention/cleanup")
 def manual_cleanup_retention():
-    """手動觸發清理過期無違規影片"""
     result = retention_mgr.cleanup_old_records(force=True)
     return {"success": True, **result}
 
-# ── 報表匯出 API (Excel 相容 CSV) ─────────────────────────────────
+# ── 報表匯出 API ────────────────────────────────────────────────
 @app.get("/api/reports/export")
 def export_alerts_report(days: int = 7):
-    """匯出最近 N 天的路污違規事件報表 (CSV 格式，UTF-8 BOM)"""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -189,7 +208,6 @@ def export_alerts_report(days: int = 7):
         rows = cursor.fetchall()
 
     output = io.StringIO()
-    # 寫入 UTF-8 BOM 避免 Excel 開啟繁體中文亂碼
     output.write("\ufeff")
     writer = csv.writer(output)
     writer.writerow(["事件編號", "相機名稱", "發生時間", "判定狀態", "信心度(%)", "紋理密度", "快照檔名", "對應錄影檔", "影片內秒數"])

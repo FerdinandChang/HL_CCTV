@@ -2,6 +2,7 @@
 let roiPoints = [];
 let isEditingROI = false;
 let draggedPointIdx = -1;
+let tsPlayer = null;
 
 const canvas = document.getElementById("roi-canvas");
 const ctx = canvas.getContext("2d");
@@ -281,38 +282,51 @@ function fetchAlerts() {
             }
 
             list.innerHTML = data.alerts.map(a => `
-                <div class="flex space-x-3 bg-slate-800/80 p-2.5 rounded-xl border border-red-900/50">
-                    <img src="/api/snapshots/${a.snapshot_file}" class="w-20 h-14 object-cover rounded-lg border border-slate-700 cursor-pointer" onclick="window.open('/api/snapshots/${a.snapshot_file}', '_blank')">
+                <div class="flex space-x-3 bg-slate-800/80 p-2.5 rounded-xl border border-red-900/50 hover:bg-slate-800 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
+                    <img src="/api/snapshots/${a.snapshot_file}" class="w-20 h-14 object-cover rounded-lg border border-slate-700">
                     <div class="text-xs flex-1 flex flex-col justify-center">
                         <div class="font-bold text-red-400">${a.status}</div>
                         <div class="text-slate-400 text-[11px]">${a.timestamp}</div>
-                        ${a.video_file ? `<div class="text-slate-500 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
+                        ${a.video_file ? `<div class="text-emerald-400 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
                     </div>
                 </div>
             `).join("");
         });
 }
 
+// 錄影檔案清單（加入點擊彈窗互動）
 function fetchVideos() {
-    fetch("/api/videos?limit=10")
+    fetch("/api/videos?limit=15")
         .then(r => r.json())
         .then(data => {
             const tbody = document.getElementById("video-table-body");
             if (!data.videos || data.videos.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">尚無錄影檔紀錄</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">尚無錄影檔紀錄</td></tr>`;
                 return;
             }
             tbody.innerHTML = data.videos.map(v => `
-                <tr class="border-b border-slate-800/50">
-                    <td class="py-2.5 px-3 font-mono">${v.filename}</td>
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/60 transition cursor-pointer" onclick="openVideoModal('${v.filename}', ${v.muddy_count})">
+                    <td class="py-2.5 px-3 font-mono text-emerald-300 font-bold flex items-center space-x-1.5">
+                        <span>🎬</span>
+                        <span>${v.filename}</span>
+                    </td>
                     <td class="py-2.5 px-3">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${v.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">
                             ${v.status}
                         </span>
                     </td>
                     <td class="py-2.5 px-3">${v.total_sampled}</td>
-                    <td class="py-2.5 px-3 ${v.muddy_count > 0 ? 'text-red-400 font-bold' : 'text-slate-400'}">${v.muddy_count}</td>
+                    <td class="py-2.5 px-3">
+                        <span class="px-2 py-0.5 rounded text-xs font-black ${v.muddy_count > 0 ? 'bg-red-950 text-red-400 border border-red-800' : 'text-slate-400'}">
+                            ${v.muddy_count}
+                        </span>
+                    </td>
                     <td class="py-2.5 px-3 text-slate-500">${v.processed_at || v.recorded_at || '--'}</td>
+                    <td class="py-2.5 px-3 text-right">
+                        <button class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded text-xs border border-slate-600 font-medium">
+                            🔍 詳情 / 播放
+                        </button>
+                    </td>
                 </tr>
             `).join("");
         });
@@ -322,4 +336,103 @@ function triggerScan() {
     fetch("/api/videos/scan", { method: "POST" })
         .then(r => r.json())
         .then(data => alert(data.message));
+}
+
+// ── 影片播放與違規詳情彈窗邏輯 ──────────────────────────────────────────
+function openVideoModal(filename, muddyCount) {
+    if (!filename || filename === "null" || filename === "--") return;
+    
+    document.getElementById("modal-filename").textContent = filename;
+    document.getElementById("modal-muddy-count").textContent = `${muddyCount} 次`;
+    document.getElementById("modal-download-btn").href = `/api/videos/stream/${filename}`;
+    document.getElementById("video-modal").classList.remove("hidden");
+
+    const videoEl = document.getElementById("modal-player");
+    const streamUrl = `/api/videos/stream/${filename}`;
+
+    // 銷毀舊播放器實例
+    if (tsPlayer) {
+        tsPlayer.destroy();
+        tsPlayer = null;
+    }
+
+    // 嘗試透過 mpegts.js 播放 TS 串流
+    if (window.mpegts && mpegts.isSupported()) {
+        try {
+            tsPlayer = mpegts.createPlayer({
+                type: 'mse',
+                isLive: false,
+                url: streamUrl
+            });
+            tsPlayer.attachMediaElement(videoEl);
+            tsPlayer.load();
+            tsPlayer.play().catch(e => console.log("Auto-play blocked or waiting user click"));
+        } catch (err) {
+            console.warn("mpegts failed, fallback to native video src", err);
+            videoEl.src = streamUrl;
+        }
+    } else {
+        videoEl.src = streamUrl;
+    }
+
+    // 載入該影片的髒污違規截圖
+    loadVideoAlerts(filename);
+}
+
+function closeVideoModal() {
+    const videoEl = document.getElementById("modal-player");
+    videoEl.pause();
+    if (tsPlayer) {
+        tsPlayer.destroy();
+        tsPlayer = null;
+    }
+    document.getElementById("video-modal").classList.add("hidden");
+}
+
+function loadVideoAlerts(filename) {
+    const container = document.getElementById("modal-alerts-container");
+    container.innerHTML = `<span class="text-xs text-slate-500">載入抓拍紀錄中...</span>`;
+
+    fetch(`/api/videos/${filename}/alerts`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.alerts || data.alerts.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-1">
+                        <div class="text-emerald-400 font-bold text-xs">✅ 無路面髒污違規</div>
+                        <div class="text-[11px] text-slate-500">這 30 分鐘錄影路面維持乾淨。</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = data.alerts.map(a => {
+                const min = Math.floor(a.video_sec / 60);
+                const sec = Math.floor(a.video_sec % 60);
+                const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+                return `
+                    <div class="bg-slate-950 p-2 rounded-xl border border-red-900/60 flex space-x-2.5">
+                        <img src="/api/snapshots/${a.snapshot_file}" class="w-16 h-12 object-cover rounded-lg border border-slate-800 cursor-pointer" onclick="window.open('/api/snapshots/${a.snapshot_file}', '_blank')">
+                        <div class="flex-1 text-[11px] flex flex-col justify-center">
+                            <div class="font-bold text-red-400">髒污檢測 (${a.confidence.toFixed(1)}%)</div>
+                            <div class="text-slate-400 text-[10px]">時間: ${a.timestamp}</div>
+                            <button onclick="seekVideo(${a.video_sec})" class="mt-1 bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit">
+                                ⏩ 跳至 ${timeStr}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        });
+}
+
+function seekVideo(sec) {
+    const videoEl = document.getElementById("modal-player");
+    if (tsPlayer) {
+        tsPlayer.currentTime = sec;
+        tsPlayer.play();
+    } else if (videoEl) {
+        videoEl.currentTime = sec;
+        videoEl.play();
+    }
 }

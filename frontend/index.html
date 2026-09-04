@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HL_CCTV 營建站路污智慧判視系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- mpegts.js 用於在 HTML5 中直接解碼播放 .ts 影片 -->
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
     <style>
         .pulse-alert {
             animation: pulse-red 1.5s infinite;
@@ -79,23 +81,26 @@
 
                 <!-- 錄影檔 (.ts) 批次分析進度表 -->
                 <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center">
-                        <span>📁 30 分鐘 .ts 錄影檔分析清單</span>
-                        <span class="text-xs text-slate-500 font-normal ml-2">(儲存於 D:\錄影\Record\)</span>
-                    </h3>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-slate-300 flex items-center">
+                            <span>📁 30 分鐘 .ts 錄影檔分析清單</span>
+                            <span class="text-xs text-slate-500 font-normal ml-2">(點擊任一列可直接「播放影片」或「調閱髒污抓拍」)</span>
+                        </h3>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-xs text-left text-slate-300">
                             <thead class="text-slate-500 border-b border-slate-800 uppercase">
                                 <tr>
-                                    <th class="py-2 px-3">檔名</th>
-                                    <th class="py-2 px-3">狀態</th>
-                                    <th class="py-2 px-3">抽幀數</th>
-                                    <th class="py-2 px-3">髒污次數</th>
-                                    <th class="py-2 px-3">處理時間</th>
+                                    <th class="py-2.5 px-3">檔名</th>
+                                    <th class="py-2.5 px-3">狀態</th>
+                                    <th class="py-2.5 px-3">抽幀數</th>
+                                    <th class="py-2.5 px-3">髒污次數</th>
+                                    <th class="py-2.5 px-3">分析完成時間</th>
+                                    <th class="py-2.5 px-3 text-right">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="video-table-body">
-                                <tr><td colspan="5" class="py-4 text-center text-slate-500">尚無錄影檔紀錄</td></tr>
+                                <tr><td colspan="6" class="py-4 text-center text-slate-500">讀取錄影檔紀錄中...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -104,7 +109,7 @@
 
             <!-- 右側即時狀態與教學面板 (佔 1 欄) -->
             <div class="space-y-6">
-                <!-- 硬碟容量健康狀態卡片 (新功能) -->
+                <!-- 硬碟容量健康狀態卡片 -->
                 <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
                     <div class="flex justify-between items-center mb-1">
                         <span class="text-xs text-slate-400 font-bold flex items-center space-x-1">
@@ -174,6 +179,50 @@
                     </div>
                     <div id="alerts-list" class="space-y-3 max-h-80 overflow-y-auto pr-1">
                         <div class="text-center py-6 text-slate-500 text-xs">目前無警報紀錄</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 影片播放與違規抓拍詳情彈窗 (Modal) -->
+    <div id="video-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- 彈窗頂部 -->
+            <div class="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg font-bold text-white">🎬 錄影回放與髒污調閱:</span>
+                    <span id="modal-filename" class="text-emerald-400 font-mono text-sm font-bold">--</span>
+                </div>
+                <button onclick="closeVideoModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2 py-1">✕</button>
+            </div>
+
+            <!-- 彈窗主體內容 -->
+            <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-y-auto">
+                <!-- 左側播放器 (佔 2 欄) -->
+                <div class="md:col-span-2 space-y-3">
+                    <div class="bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center border border-slate-800 relative">
+                        <video id="modal-player" controls class="w-full h-full object-contain"></video>
+                        <div id="player-loading" class="absolute inset-0 bg-black/70 flex items-center justify-center text-xs text-slate-400 hidden">
+                            載入影片中...
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span id="modal-video-info">格式: H.265 / MPEG-2 TS (1080p 15fps)</span>
+                        <a id="modal-download-btn" href="#" download class="text-cyan-400 hover:text-cyan-300 underline font-medium">
+                            ⬇️ 下載原始 .ts 檔
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 右側違規抓拍與時間點清單 (佔 1 欄) -->
+                <div class="space-y-3 flex flex-col">
+                    <div class="text-xs font-bold text-slate-300 flex justify-between items-center pb-2 border-b border-slate-800">
+                        <span>🚨 本片髒污抓拍記錄</span>
+                        <span id="modal-muddy-count" class="text-red-400 font-mono">0 次</span>
+                    </div>
+                    <div id="modal-alerts-container" class="flex-1 overflow-y-auto space-y-2.5 max-h-72 pr-1">
+                        <!-- 動態填入違規截圖與秒數按鈕 -->
                     </div>
                 </div>
             </div>
