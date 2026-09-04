@@ -1,6 +1,7 @@
 ﻿import io
 import csv
 import time
+import cv2
 import threading
 from pathlib import Path
 from datetime import datetime
@@ -17,7 +18,7 @@ from .modules.processor import RoadAnalyzer
 from .modules.watcher import TSVideoWatcher
 from .modules.retention import DiskRetentionManager
 
-app = FastAPI(title="HL_CCTV 工地路污判視系統", version="1.2.0")
+app = FastAPI(title="HL_CCTV 工地路污判視系統", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -157,10 +158,55 @@ def trigger_scan_videos():
     watcher.scan_historical_records()
     return {"success": True, "message": "已觸發錄影目錄重新掃描"}
 
-# ── 影片直接播放串流與單片違規截圖查詢 (新功能) ──────────────────────────
+# ── H.265 相容通用網頁回放端點 (解決瀏覽器無法原生硬解 H.265 TS 問題) ────────
+@app.get("/api/videos/preview/{filename}")
+def preview_video_mjpeg(filename: str, sec: float = 0.0, fps_limit: int = 12):
+    """
+    通用 H.265 TS 預覽串流：
+    由後端 OpenCV 解碼 H.265 並以 MJPEG 格式串流至前端，
+    100% 相容所有瀏覽器（免裝微軟 HEVC 擴充模組，完全不黑屏）。
+    """
+    base_dir = Path(r"D:\錄影\Record")
+    matched = list(base_dir.rglob(filename))
+    if not matched or not matched[0].exists():
+        raise HTTPException(status_code=404, detail="找不到該錄影檔")
+    target_path = matched[0]
+
+    def mjpeg_generator():
+        cap = cv2.VideoCapture(str(target_path))
+        if not cap.isOpened():
+            return
+
+        fps = cap.get(cv2.CAP_PROP_FPS) or 15.0
+        start_frame = int(sec * fps)
+        if start_frame > 0:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+        delay = 1.0 / max(1, min(fps_limit, 20))
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                # 縮小為 720p 兼顧畫質與極致流暢度
+                h, w = frame.shape[:2]
+                scaled = cv2.resize(frame, (960, int(960 * h / w)))
+                ret, buf = cv2.imencode('.jpg', scaled, [cv2.IMWRITE_JPEG_QUALITY, 75])
+                if ret:
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + buf.tobytes() + b'\r\n')
+                time.sleep(delay)
+        finally:
+            cap.release()
+
+    return StreamingResponse(
+        mjpeg_generator(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
 @app.get("/api/videos/stream/{filename}")
 def stream_video_file(filename: str):
-    """提供 .ts 影片檔案串流（供網頁播放器直接播放或調閱）"""
+    """提供 .ts 原始檔下載或本機播放器調閱"""
     base_dir = Path(r"D:\錄影\Record")
     matched = list(base_dir.rglob(filename))
     if not matched or not matched[0].exists():
@@ -174,7 +220,6 @@ def stream_video_file(filename: str):
 
 @app.get("/api/videos/{filename}/alerts")
 def get_video_alerts(filename: str):
-    """查詢特定 .ts 影片被抽查到的所有髒污違規截圖"""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -185,7 +230,6 @@ def get_video_alerts(filename: str):
         rows = cursor.fetchall()
         return {"alerts": [dict(r) for r in rows]}
 
-# ── 硬碟空間與儲存管理 API ───────────────────────────────────────
 @app.get("/api/disk_usage")
 def get_disk_usage():
     return retention_mgr.get_disk_status()
@@ -195,7 +239,6 @@ def manual_cleanup_retention():
     result = retention_mgr.cleanup_old_records(force=True)
     return {"success": True, **result}
 
-# ── 報表匯出 API ────────────────────────────────────────────────
 @app.get("/api/reports/export")
 def export_alerts_report(days: int = 7):
     with get_connection() as conn:

@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HL_CCTV 營建站路污智慧判視系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- mpegts.js 用於在 HTML5 中直接解碼播放 .ts 影片 -->
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
     <style>
         .pulse-alert {
             animation: pulse-red 1.5s infinite;
@@ -84,7 +82,7 @@
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-sm font-bold text-slate-300 flex items-center">
                             <span>📁 30 分鐘 .ts 錄影檔分析清單</span>
-                            <span class="text-xs text-slate-500 font-normal ml-2">(點擊任一列可直接「播放影片」或「調閱髒污抓拍」)</span>
+                            <span class="text-xs text-slate-500 font-normal ml-2">(點擊任一列可直接「播放回放」或「調閱髒污抓拍」)</span>
                         </h3>
                     </div>
                     <div class="overflow-x-auto">
@@ -185,33 +183,57 @@
         </div>
     </div>
 
-    <!-- 影片播放與違規抓拍詳情彈窗 (Modal) -->
-    <div id="video-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <!-- 影片播放與違規抓拍詳情彈窗 (全瀏覽器相容 H.265 專用) -->
+    <div id="video-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <!-- 彈窗頂部 -->
             <div class="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
                 <div class="flex items-center space-x-2">
                     <span class="text-lg font-bold text-white">🎬 錄影回放與髒污調閱:</span>
                     <span id="modal-filename" class="text-emerald-400 font-mono text-sm font-bold">--</span>
+                    <span class="text-[11px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded ml-2">H.265 即時解碼回放</span>
                 </div>
                 <button onclick="closeVideoModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2 py-1">✕</button>
             </div>
 
             <!-- 彈窗主體內容 -->
             <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-y-auto">
-                <!-- 左側播放器 (佔 2 欄) -->
+                <!-- 左側播放畫面 (佔 2 欄) -->
                 <div class="md:col-span-2 space-y-3">
                     <div class="bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center border border-slate-800 relative">
-                        <video id="modal-player" controls class="w-full h-full object-contain"></video>
-                        <div id="player-loading" class="absolute inset-0 bg-black/70 flex items-center justify-center text-xs text-slate-400 hidden">
-                            載入影片中...
+                        <!-- 全相容 MJPEG 畫面 -->
+                        <img id="modal-stream-img" src="" class="w-full h-full object-contain">
+                        <div id="modal-stream-overlay" class="absolute top-3 left-3 bg-black/70 px-2.5 py-1 rounded text-xs font-mono text-emerald-400">
+                            播放中: <span id="current-play-time">00:00</span>
                         </div>
                     </div>
-                    <div class="flex justify-between items-center text-xs text-slate-400">
-                        <span id="modal-video-info">格式: H.265 / MPEG-2 TS (1080p 15fps)</span>
-                        <a id="modal-download-btn" href="#" download class="text-cyan-400 hover:text-cyan-300 underline font-medium">
-                            ⬇️ 下載原始 .ts 檔
-                        </a>
+
+                    <!-- 播放控制工具列 -->
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                        <!-- 時間軸滑桿 -->
+                        <div class="flex items-center space-x-3 text-xs font-mono">
+                            <span id="label-cur-sec">00:00</span>
+                            <input id="video-seek-slider" type="range" min="0" max="1800" value="0" step="5" onchange="onSliderChange(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                            <span>30:00</span>
+                        </div>
+
+                        <!-- 操作按鈕列 -->
+                        <div class="flex justify-between items-center pt-1">
+                            <div class="flex space-x-2">
+                                <button onclick="adjustPlayTime(-30)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded text-xs font-medium border border-slate-700">
+                                    ⏪ -30秒
+                                </button>
+                                <button id="btn-toggle-play" onclick="togglePlayState()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold shadow">
+                                    ⏸ 暫停
+                                </button>
+                                <button onclick="adjustPlayTime(30)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded text-xs font-medium border border-slate-700">
+                                    ⏩ +30秒
+                                </button>
+                            </div>
+                            <a id="modal-download-btn" href="#" download class="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium">
+                                ⬇️ 下載原始 .ts 檔
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -221,7 +243,7 @@
                         <span>🚨 本片髒污抓拍記錄</span>
                         <span id="modal-muddy-count" class="text-red-400 font-mono">0 次</span>
                     </div>
-                    <div id="modal-alerts-container" class="flex-1 overflow-y-auto space-y-2.5 max-h-72 pr-1">
+                    <div id="modal-alerts-container" class="flex-1 overflow-y-auto space-y-2.5 max-h-80 pr-1">
                         <!-- 動態填入違規截圖與秒數按鈕 -->
                     </div>
                 </div>

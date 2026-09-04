@@ -2,11 +2,15 @@
 let roiPoints = [];
 let isEditingROI = false;
 let draggedPointIdx = -1;
-let tsPlayer = null;
+
+// 彈窗播放器狀態
+let activeVideoFilename = null;
+let currentPlaySec = 0;
+let isPlaying = true;
+let playTimer = null;
 
 const canvas = document.getElementById("roi-canvas");
 const ctx = canvas.getContext("2d");
-const videoWrapper = document.getElementById("video-wrapper");
 
 window.addEventListener("DOMContentLoaded", () => {
     initCanvas();
@@ -156,6 +160,7 @@ function onMouseUp() {
     drawROI();
 }
 
+// 狀態更新 (加入防禦性檢查，避免 console 報錯)
 function fetchStatus() {
     fetch(`/api/status?cam_id=${currentCamId}`)
         .then(r => r.json())
@@ -168,27 +173,34 @@ function fetchStatus() {
             const streakBar = document.getElementById("streak-bar");
             const sourceBadge = document.getElementById("source-badge");
 
-            statusText.textContent = data.status;
-            confVal.textContent = data.confidence + "%";
-            edgeVal.textContent = data.edge_density;
-            sourceBadge.textContent = `${data.name} | ${data.video_source.split('\\').pop()}`;
+            if (statusText) statusText.textContent = data.status || "--";
+            if (confVal) confVal.textContent = (data.confidence || 0) + "%";
+            if (edgeVal) edgeVal.textContent = data.edge_density || "0.000";
+            if (sourceBadge && data.name) {
+                const srcName = (data.video_source || "").split('\\').pop();
+                sourceBadge.textContent = `${data.name} | ${srcName}`;
+            }
 
-            streakText.textContent = `${data.streak} / ${data.streak_threshold} 幀`;
-            const pct = Math.min(100, (data.streak / data.streak_threshold) * 100);
-            streakBar.style.width = pct + "%";
+            if (streakText) streakText.textContent = `${data.streak || 0} / ${data.streak_threshold || 3} 幀`;
+            if (streakBar) {
+                const pct = Math.min(100, ((data.streak || 0) / (data.streak_threshold || 3)) * 100);
+                streakBar.style.width = pct + "%";
+            }
 
-            if (data.is_alert) {
-                statusCard.classList.add("pulse-alert");
-                statusText.className = "text-3xl font-black text-red-500 mb-2";
-            } else if (data.status.includes("CLEAN")) {
-                statusCard.classList.remove("pulse-alert");
-                statusText.className = "text-3xl font-black text-emerald-400 mb-2";
-            } else if (data.status.includes("Blocked")) {
-                statusCard.classList.remove("pulse-alert");
-                statusText.className = "text-3xl font-black text-amber-400 mb-2";
-            } else {
-                statusCard.classList.remove("pulse-alert");
-                statusText.className = "text-3xl font-black text-slate-300 mb-2";
+            if (statusCard && statusText) {
+                if (data.is_alert) {
+                    statusCard.classList.add("pulse-alert");
+                    statusText.className = "text-3xl font-black text-red-500 mb-2";
+                } else if ((data.status || "").includes("CLEAN")) {
+                    statusCard.classList.remove("pulse-alert");
+                    statusText.className = "text-3xl font-black text-emerald-400 mb-2";
+                } else if ((data.status || "").includes("Blocked")) {
+                    statusCard.classList.remove("pulse-alert");
+                    statusText.className = "text-3xl font-black text-amber-400 mb-2";
+                } else {
+                    statusCard.classList.remove("pulse-alert");
+                    statusText.className = "text-3xl font-black text-slate-300 mb-2";
+                }
             }
         })
         .catch(err => console.error("Status fetch error", err));
@@ -198,19 +210,23 @@ function fetchDiskUsage() {
     fetch("/api/disk_usage")
         .then(r => r.json())
         .then(data => {
-            document.getElementById("disk-drive").textContent = data.drive || "D:";
+            const driveEl = document.getElementById("disk-drive");
+            if (driveEl) driveEl.textContent = data.drive || "D:";
             const freeEl = document.getElementById("disk-free");
-            freeEl.textContent = `${data.free_gb} GB`;
-            document.getElementById("disk-pct").textContent = `${data.used_pct}%`;
+            if (freeEl) freeEl.textContent = `${data.free_gb} GB`;
+            const pctEl = document.getElementById("disk-pct");
+            if (pctEl) pctEl.textContent = `${data.used_pct}%`;
             
             const bar = document.getElementById("disk-bar");
-            bar.style.width = `${data.used_pct}%`;
-            if (data.is_low_space) {
-                bar.className = "bg-red-500 h-2 rounded-full transition-all duration-500 animate-pulse";
-                freeEl.className = "text-red-400 font-bold";
-            } else {
-                bar.className = "bg-emerald-500 h-2 rounded-full transition-all duration-500";
-                freeEl.className = "text-emerald-400";
+            if (bar) {
+                bar.style.width = `${data.used_pct}%`;
+                if (data.is_low_space) {
+                    bar.className = "bg-red-500 h-2 rounded-full transition-all duration-500 animate-pulse";
+                    if (freeEl) freeEl.className = "text-red-400 font-bold";
+                } else {
+                    bar.className = "bg-emerald-500 h-2 rounded-full transition-all duration-500";
+                    if (freeEl) freeEl.className = "text-emerald-400";
+                }
             }
         })
         .catch(err => console.error("Disk usage fetch error", err));
@@ -245,6 +261,7 @@ function fetchRefs() {
         .then(r => r.json())
         .then(data => {
             const container = document.getElementById("refs-container");
+            if (!container) return;
             if (!data.refs || data.refs.length === 0) {
                 container.innerHTML = `<span class="col-span-3 text-slate-500 text-xs text-center">尚未儲存樣本</span>`;
                 return;
@@ -274,7 +291,8 @@ function fetchAlerts() {
         .then(data => {
             const list = document.getElementById("alerts-list");
             const badge = document.getElementById("alert-count");
-            badge.textContent = `${data.alerts.length} 筆`;
+            if (badge) badge.textContent = `${data.alerts.length} 筆`;
+            if (!list) return;
 
             if (!data.alerts || data.alerts.length === 0) {
                 list.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">目前無警報紀錄</div>`;
@@ -294,12 +312,12 @@ function fetchAlerts() {
         });
 }
 
-// 錄影檔案清單（加入點擊彈窗互動）
 function fetchVideos() {
     fetch("/api/videos?limit=15")
         .then(r => r.json())
         .then(data => {
             const tbody = document.getElementById("video-table-body");
+            if (!tbody) return;
             if (!data.videos || data.videos.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">尚無錄影檔紀錄</td></tr>`;
                 return;
@@ -324,7 +342,7 @@ function fetchVideos() {
                     <td class="py-2.5 px-3 text-slate-500">${v.processed_at || v.recorded_at || '--'}</td>
                     <td class="py-2.5 px-3 text-right">
                         <button class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded text-xs border border-slate-600 font-medium">
-                            🔍 詳情 / 播放
+                            🔍 詳情 / 回放
                         </button>
                     </td>
                 </tr>
@@ -338,55 +356,79 @@ function triggerScan() {
         .then(data => alert(data.message));
 }
 
-// ── 影片播放與違規詳情彈窗邏輯 ──────────────────────────────────────────
+// ── 全瀏覽器相容 H.265 即時回放播放器控制 ────────────────────────────────
 function openVideoModal(filename, muddyCount) {
     if (!filename || filename === "null" || filename === "--") return;
     
+    activeVideoFilename = filename;
+    currentPlaySec = 0;
+    isPlaying = true;
+
     document.getElementById("modal-filename").textContent = filename;
     document.getElementById("modal-muddy-count").textContent = `${muddyCount} 次`;
     document.getElementById("modal-download-btn").href = `/api/videos/stream/${filename}`;
     document.getElementById("video-modal").classList.remove("hidden");
 
-    const videoEl = document.getElementById("modal-player");
-    const streamUrl = `/api/videos/stream/${filename}`;
-
-    // 銷毀舊播放器實例
-    if (tsPlayer) {
-        tsPlayer.destroy();
-        tsPlayer = null;
-    }
-
-    // 嘗試透過 mpegts.js 播放 TS 串流
-    if (window.mpegts && mpegts.isSupported()) {
-        try {
-            tsPlayer = mpegts.createPlayer({
-                type: 'mse',
-                isLive: false,
-                url: streamUrl
-            });
-            tsPlayer.attachMediaElement(videoEl);
-            tsPlayer.load();
-            tsPlayer.play().catch(e => console.log("Auto-play blocked or waiting user click"));
-        } catch (err) {
-            console.warn("mpegts failed, fallback to native video src", err);
-            videoEl.src = streamUrl;
-        }
-    } else {
-        videoEl.src = streamUrl;
-    }
-
-    // 載入該影片的髒污違規截圖
+    startStreamingAtSec(0);
     loadVideoAlerts(filename);
+
+    if (playTimer) clearInterval(playTimer);
+    playTimer = setInterval(() => {
+        if (isPlaying && currentPlaySec < 1800) {
+            currentPlaySec += 1;
+            updatePlayTimeUI(currentPlaySec);
+        }
+    }, 1000);
+}
+
+function startStreamingAtSec(sec) {
+    currentPlaySec = Math.max(0, Math.min(1800, sec));
+    updatePlayTimeUI(currentPlaySec);
+    const imgEl = document.getElementById("modal-stream-img");
+    imgEl.src = `/api/videos/preview/${activeVideoFilename}?sec=${currentPlaySec}&t=${Date.now()}`;
+}
+
+function updatePlayTimeUI(sec) {
+    const min = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    const timeStr = `${String(min).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    document.getElementById("current-play-time").textContent = timeStr;
+    document.getElementById("label-cur-sec").textContent = timeStr;
+    document.getElementById("video-seek-slider").value = sec;
+}
+
+function onSliderChange(val) {
+    startStreamingAtSec(parseInt(val));
+}
+
+function adjustPlayTime(delta) {
+    startStreamingAtSec(currentPlaySec + delta);
+}
+
+function togglePlayState() {
+    isPlaying = !isPlaying;
+    const btn = document.getElementById("btn-toggle-play");
+    const imgEl = document.getElementById("modal-stream-img");
+    if (isPlaying) {
+        btn.textContent = "⏸ 暫停";
+        btn.className = "bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold shadow";
+        startStreamingAtSec(currentPlaySec);
+    } else {
+        btn.textContent = "▶ 播放";
+        btn.className = "bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs font-bold shadow";
+        imgEl.src = ""; // 停止拉流省資源
+    }
 }
 
 function closeVideoModal() {
-    const videoEl = document.getElementById("modal-player");
-    videoEl.pause();
-    if (tsPlayer) {
-        tsPlayer.destroy();
-        tsPlayer = null;
+    if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = null;
     }
+    const imgEl = document.getElementById("modal-stream-img");
+    imgEl.src = "";
     document.getElementById("video-modal").classList.add("hidden");
+    activeVideoFilename = null;
 }
 
 function loadVideoAlerts(filename) {
@@ -416,7 +458,7 @@ function loadVideoAlerts(filename) {
                         <div class="flex-1 text-[11px] flex flex-col justify-center">
                             <div class="font-bold text-red-400">髒污檢測 (${a.confidence.toFixed(1)}%)</div>
                             <div class="text-slate-400 text-[10px]">時間: ${a.timestamp}</div>
-                            <button onclick="seekVideo(${a.video_sec})" class="mt-1 bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit">
+                            <button onclick="startStreamingAtSec(${a.video_sec})" class="mt-1 bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit">
                                 ⏩ 跳至 ${timeStr}
                             </button>
                         </div>
@@ -424,15 +466,4 @@ function loadVideoAlerts(filename) {
                 `;
             }).join("");
         });
-}
-
-function seekVideo(sec) {
-    const videoEl = document.getElementById("modal-player");
-    if (tsPlayer) {
-        tsPlayer.currentTime = sec;
-        tsPlayer.play();
-    } else if (videoEl) {
-        videoEl.currentTime = sec;
-        videoEl.play();
-    }
 }
