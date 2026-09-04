@@ -1,4 +1,4 @@
-﻿import cv2
+import cv2
 import time
 import threading
 import numpy as np
@@ -12,6 +12,7 @@ from .tracker import SimpleTracker
 from .reference_manager import ReferenceManager
 from .alert_manager import AlertManager
 from .truck_bed_analyzer import TruckBedAnalyzer
+from .lpr_manager import LPRVehicleManager
 
 class YOLOModelSingleton:
     _model = None
@@ -108,6 +109,11 @@ class RoadAnalyzer:
         self.latest_truck_status = "無卡車"
         self.last_truck_alert_time = 0
 
+        # 運輸車輛帶泥舉證與車牌/車頭特寫管理模組
+        self.lpr_mgr = LPRVehicleManager(max_buffer_sec=30.0)
+        self.latest_suspect_vehicle = "無行經車輛"
+        self.last_attributed_alert_time = 0
+
         self.roi_mask = None
         self.roi_area = 0
         self.current_status = "Initializing..."
@@ -194,6 +200,14 @@ class RoadAnalyzer:
                         overlap = cv2.countNonZero(roi_slice)
                         if overlap > (self.roi_area * 0.03):
                             current_detections.append([x1, y1, x2, y2])
+
+                        # 記錄行經車輛供帶泥溯源舉證
+                        if int(cls_id) in [2, 5, 7]:
+                            vtype = "砂石車/卡車" if int(cls_id) == 7 else "工程車輛"
+                            self.lpr_mgr.record_passing_vehicle(frame, [x1, y1, x2, y2], vtype)
+                            suspect = self.lpr_mgr.get_latest_vehicle()
+                            if suspect:
+                                self.latest_suspect_vehicle = f"{suspect['cls_name']} ({suspect['plate_num']})"
 
                         # 若為卡車 (class 7)，執行車斗防塵設施判視
                         if int(cls_id) == 7:
@@ -295,6 +309,23 @@ class RoadAnalyzer:
                         video_file=video_file,
                         video_sec=video_sec
                     )
+
+                    # 【科技執法核心】若有剛駛離之涉嫌車輛，自動合成科技執法二合一舉證單
+                    if (time.time() - self.last_attributed_alert_time > 20.0):
+                        attr_snap, suspect_info = self.lpr_mgr.create_attributed_evidence(
+                            annotated, self.cam_id, self.muddy_area_pct, video_file, video_sec
+                        )
+                        if attr_snap:
+                            self.last_attributed_alert_time = time.time()
+                            save_alert_event(
+                                cam_id=self.cam_id,
+                                status="ATTRIBUTED_MUDDY",
+                                confidence=self.confidence,
+                                edge_density=self.edge_density,
+                                snapshot_file=attr_snap,
+                                video_file=video_file,
+                                video_sec=video_sec
+                            )
             elif label == 'clean':
                 self.current_status = f"CLEAN ({self.confidence:.1f}%)"
                 status_color = (0, 255, 0)
@@ -313,9 +344,11 @@ class RoadAnalyzer:
                     (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (240, 240, 240), 2)
         cv2.putText(annotated, f"Truck Bed: {self.latest_truck_status}", (20, 110),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(annotated, f"Vehicle: {self.latest_suspect_vehicle}", (20, 145),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 200, 100), 2)
 
         if self.alert_manager.is_alert:
-            cv2.putText(annotated, "! MUD DETECTED !", (20, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+            cv2.putText(annotated, "! MUD DETECTED !", (20, 185), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
             cv2.rectangle(annotated, (0, 0), (w, h), (0, 0, 255), 8)
 
         stats = {
@@ -324,6 +357,7 @@ class RoadAnalyzer:
             "edge_density": self.edge_density,
             "muddy_area_pct": self.muddy_area_pct,
             "truck_bed_status": self.latest_truck_status,
+            "suspect_vehicle": self.latest_suspect_vehicle,
             "is_alert": self.alert_manager.is_alert,
             "streak": self.alert_manager.muddy_streak,
             "is_blocked": is_blocked

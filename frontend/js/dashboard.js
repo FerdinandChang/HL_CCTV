@@ -191,6 +191,9 @@ function fetchStatus() {
                 }
             }
 
+            const suspectVehVal = document.getElementById("suspect-veh-val");
+            if (suspectVehVal) suspectVehVal.textContent = data.suspect_vehicle || "無行經車輛";
+
             if (sourceBadge && data.name) {
                 const srcName = (data.video_source || "").split('\\').pop();
                 sourceBadge.textContent = `${data.name} | ${srcName}`;
@@ -315,10 +318,19 @@ function fetchAlerts() {
             }
 
             list.innerHTML = data.alerts.map(a => {
-                const isTruckAlert = a.status === "UNCOVERED_TRUCK";
-                const titleText = isTruckAlert ? "⚠️ 車斗未依規定覆蓋防塵設施" : a.status;
-                const titleColor = isTruckAlert ? "text-amber-400 font-bold" : "text-red-400 font-bold";
-                const borderStyle = isTruckAlert ? "border-amber-900/60 bg-slate-850" : "border-red-900/50 bg-slate-800/80";
+                let titleText = a.status;
+                let titleColor = "text-red-400 font-bold";
+                let borderStyle = "border-red-900/50 bg-slate-800/80";
+
+                if (a.status === "UNCOVERED_TRUCK") {
+                    titleText = "⚠️ 車斗未依規定覆蓋防塵設施";
+                    titleColor = "text-amber-400 font-bold";
+                    borderStyle = "border-amber-900/60 bg-slate-850";
+                } else if (a.status === "ATTRIBUTED_MUDDY") {
+                    titleText = "🎯 科技執法車輛帶泥舉證單 (二合一)";
+                    titleColor = "text-purple-300 font-black";
+                    borderStyle = "border-purple-600/80 bg-purple-950/40 shadow-lg";
+                }
 
                 return `
                     <div class="flex space-x-3 p-2.5 rounded-xl border ${borderStyle} hover:bg-slate-800 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
