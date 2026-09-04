@@ -1,4 +1,4 @@
-﻿let currentCamId = "cam_10";
+let currentCamId = "cam_10";
 let roiPoints = [];
 let isEditingROI = false;
 let draggedPointIdx = -1;
@@ -173,9 +173,24 @@ function fetchStatus() {
             const streakBar = document.getElementById("streak-bar");
             const sourceBadge = document.getElementById("source-badge");
 
+            const areaVal = document.getElementById("area-val");
+            const truckBedVal = document.getElementById("truck-bed-val");
+
             if (statusText) statusText.textContent = data.status || "--";
             if (confVal) confVal.textContent = (data.confidence || 0) + "%";
             if (edgeVal) edgeVal.textContent = data.edge_density || "0.000";
+            if (areaVal) areaVal.textContent = (data.muddy_area_pct || 0) + "%";
+            if (truckBedVal) {
+                truckBedVal.textContent = data.truck_bed_status || "無卡車";
+                if ((data.truck_bed_status || "").includes("UNCOVERED")) {
+                    truckBedVal.className = "text-red-400 font-bold animate-pulse";
+                } else if ((data.truck_bed_status || "").includes("COVERED")) {
+                    truckBedVal.className = "text-emerald-400 font-bold";
+                } else {
+                    truckBedVal.className = "text-slate-400 font-bold";
+                }
+            }
+
             if (sourceBadge && data.name) {
                 const srcName = (data.video_source || "").split('\\').pop();
                 sourceBadge.textContent = `${data.name} | ${srcName}`;
@@ -299,16 +314,23 @@ function fetchAlerts() {
                 return;
             }
 
-            list.innerHTML = data.alerts.map(a => `
-                <div class="flex space-x-3 bg-slate-800/80 p-2.5 rounded-xl border border-red-900/50 hover:bg-slate-800 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
-                    <img src="/api/snapshots/${a.snapshot_file}" class="w-20 h-14 object-cover rounded-lg border border-slate-700">
-                    <div class="text-xs flex-1 flex flex-col justify-center">
-                        <div class="font-bold text-red-400">${a.status}</div>
-                        <div class="text-slate-400 text-[11px]">${a.timestamp}</div>
-                        ${a.video_file ? `<div class="text-emerald-400 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
+            list.innerHTML = data.alerts.map(a => {
+                const isTruckAlert = a.status === "UNCOVERED_TRUCK";
+                const titleText = isTruckAlert ? "⚠️ 車斗未依規定覆蓋防塵設施" : a.status;
+                const titleColor = isTruckAlert ? "text-amber-400 font-bold" : "text-red-400 font-bold";
+                const borderStyle = isTruckAlert ? "border-amber-900/60 bg-slate-850" : "border-red-900/50 bg-slate-800/80";
+
+                return `
+                    <div class="flex space-x-3 p-2.5 rounded-xl border ${borderStyle} hover:bg-slate-800 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
+                        <img src="/api/snapshots/${a.snapshot_file}" class="w-20 h-14 object-cover rounded-lg border border-slate-700">
+                        <div class="text-xs flex-1 flex flex-col justify-center">
+                            <div class="${titleColor}">${titleText}</div>
+                            <div class="text-slate-400 text-[11px]">${a.timestamp}</div>
+                            ${a.video_file ? `<div class="text-emerald-400 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
+                        </div>
                     </div>
-                </div>
-            `).join("");
+                `;
+            }).join("");
         });
 }
 

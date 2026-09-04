@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -130,9 +130,11 @@
                 <div id="status-card" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl text-center transition-all">
                     <h2 class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">當前判視狀態</h2>
                     <div id="status-text" class="text-3xl font-black tracking-tight text-white mb-2">--</div>
-                    <div class="flex justify-center items-center space-x-4 text-xs text-slate-400 font-mono">
-                        <div>信心度: <span id="conf-val" class="text-emerald-400 font-bold">0.0%</span></div>
+                    <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 font-mono my-2 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+                        <div>路面信心: <span id="conf-val" class="text-emerald-400 font-bold">0.0%</span></div>
                         <div>紋理密度: <span id="edge-val" class="text-cyan-400 font-bold">0.000</span></div>
+                        <div>污染面積: <span id="area-val" class="text-rose-400 font-bold">0.0%</span></div>
+                        <div>車斗防塵: <span id="truck-bed-val" class="text-amber-400 font-bold">無卡車</span></div>
                     </div>
                     
                     <!-- 泥濘計數進度條 -->

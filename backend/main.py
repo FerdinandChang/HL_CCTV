@@ -1,4 +1,4 @@
-﻿import io
+import io
 import csv
 import time
 import cv2
@@ -70,6 +70,8 @@ def get_current_status(cam_id: str = "cam_10"):
         "status": analyzer.current_status,
         "confidence": round(analyzer.confidence, 1),
         "edge_density": round(analyzer.edge_density, 3),
+        "muddy_area_pct": analyzer.muddy_area_pct,
+        "truck_bed_status": analyzer.latest_truck_status,
         "is_alert": analyzer.alert_manager.is_alert,
         "streak": analyzer.alert_manager.muddy_streak,
         "streak_threshold": analyzer.alert_manager.muddy_streak_threshold,
@@ -253,13 +255,15 @@ def export_alerts_report(days: int = 7):
     output = io.StringIO()
     output.write("\ufeff")
     writer = csv.writer(output)
-    writer.writerow(["事件編號", "相機名稱", "發生時間", "判定狀態", "信心度(%)", "紋理密度", "快照檔名", "對應錄影檔", "影片內秒數"])
+    writer.writerow(["事件編號", "相機名稱", "發生時間", "違規類型", "詳細狀態", "信心度(%)", "紋理/覆蓋特徵", "快照檔名", "對應錄影檔", "影片內秒數"])
     for r in rows:
         cam_name = "出入口 (10.0.0.10)" if r["cam_id"] == "cam_10" else "外圍車道 (10.0.0.11)"
+        vtype = "車斗未依規定覆蓋防塵設施" if r["status"] == "UNCOVERED_TRUCK" else "路面髒污污染"
         writer.writerow([
             r["id"],
             cam_name,
             r["timestamp"],
+            vtype,
             r["status"],
             r["confidence"],
             r["edge_density"],
