@@ -13,6 +13,7 @@ const canvas = document.getElementById("roi-canvas");
 const ctx = canvas.getContext("2d");
 
 window.addEventListener("DOMContentLoaded", () => {
+    initTheme();
     initCanvas();
     fetchROI();
     fetchStatus();
@@ -26,6 +27,33 @@ window.addEventListener("DOMContentLoaded", () => {
     setInterval(fetchVideos, 10000);
     setInterval(fetchDiskUsage, 30000);
 });
+
+// ── 主題切換 (白天模式 / 夜間模式) ───────────────────────────────
+function initTheme() {
+    const savedTheme = localStorage.getItem('hl_cctv_theme') || 'dark';
+    applyTheme(savedTheme);
+}
+
+function toggleTheme() {
+    const isLight = document.body.classList.contains('light-mode');
+    const newTheme = isLight ? 'dark' : 'light';
+    applyTheme(newTheme);
+    localStorage.setItem('hl_cctv_theme', newTheme);
+}
+
+function applyTheme(theme) {
+    const iconEl = document.getElementById('theme-icon');
+    const textEl = document.getElementById('theme-text');
+    if (theme === 'light') {
+        document.body.classList.add('light-mode');
+        if (iconEl) iconEl.textContent = '🌙';
+        if (textEl) textEl.textContent = '夜間模式';
+    } else {
+        document.body.classList.remove('light-mode');
+        if (iconEl) iconEl.textContent = '☀️';
+        if (textEl) textEl.textContent = '白天模式';
+    }
+}
 
 function onCameraChange() {
     currentCamId = document.getElementById("camera-select").value;
