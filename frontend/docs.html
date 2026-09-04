@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模組辨識原理說明 - 花蓮營建路污辨識系統</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-border {
+            background: linear-gradient(60deg, #10b981, #06b6d4, #3b82f6);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-5xl mx-auto space-y-8">
+        
+        <!-- 頂部導航與標題 -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-slate-800">
+            <div class="flex items-center space-x-3">
+                <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399]"></span>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-white tracking-wide">
+                        花蓮營建路污辨識系統 <span class="text-emerald-400 text-lg sm:text-xl font-normal">| 核心模組辨識原理</span>
+                    </h1>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-0.5">依據花蓮縣環境保護局《營建工程污染科技執法計畫》核定規格實作</p>
+                </div>
+            </div>
+            <a href="/" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-lg whitespace-nowrap">
+                <span>◀ 返回監控儀表板</span>
+            </a>
+        </div>
+
+        <!-- 系統整體架構總覽卡片 -->
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
+            <h2 class="text-lg font-bold text-emerald-300 flex items-center space-x-2">
+                <span>⚡ 系統協同辨識流程 (System Pipeline)</span>
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-emerald-400 font-bold text-sm">1. 車輛入出站感知</div>
+                    <p class="text-slate-400 leading-relaxed">YOLO 智慧追蹤進入 ROI 檢測區的砂石車/工程卡車，提取車頭特寫與車牌候選區。</p>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-amber-400 font-bold text-sm">2. 貨廂防塵判視 (C-2)</div>
+                    <p class="text-slate-400 leading-relaxed">定位車斗頂部，以色彩光譜與拉普拉斯紋理方差判別是否有合規覆蓋防塵帆布。</p>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-rose-400 font-bold text-sm">3. 路面色差校正 (C-3)</div>
+                    <p class="text-slate-400 leading-relaxed">車輛離站後即刻檢測路面，利用 CIE LAB 空間色差與輪廓提取精算泥污面積與斑塊。</p>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-purple-400 font-bold text-sm">4. 科技執法二合一舉證</div>
+                    <p class="text-slate-400 leading-relaxed">時空關聯追蹤涉嫌帶泥車輛，自動合成「違規卡車特寫 + 泥痕色差標註」法定舉證單。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模組一：貨廂防塵設施判視模組 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                <div class="flex items-center space-x-2.5">
+                    <span class="text-2xl">🚛</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-amber-300">模組一：貨廂防塵設施判視模組 (Truck Bed Coverage Analyzer)</h3>
+                        <p class="text-xs text-slate-400">核定規範：計畫書經費表 C-2 項目（全自動判定防塵布/網覆蓋）</p>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-amber-950 text-amber-400 border border-amber-800">C-2 核定規格</span>
+            </div>
+
+            <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                <h4 class="font-bold text-white flex items-center space-x-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>1. 車斗受檢區域自動定位 (ROI Auto-Cropping)</span>
+                </h4>
+                <p class="text-slate-400 pl-3">
+                    當神經網路辨識到砂石車進入檢測區域時，系統根據車身外接矩形以幾何比例（上部 15%~50% 區域）自動裁切貨廂頂部受檢核心區，排除車輪與背景路面干擾。
+                </p>
+
+                <h4 class="font-bold text-white flex items-center space-x-1.5 pt-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>2. 雙重多維演算法判定引擎</span>
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-3">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                        <div class="font-bold text-emerald-400 text-xs mb-1">A. 防塵帆布色譜分群 (HSV Color Spectrum)</div>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            合規車輛依法應覆蓋綠色防塵網、深藍或黑色帆布。系統轉換至 HSV 色彩空間，精確統計符合規範色系之像素佔比。若目標色系覆蓋率達閥值，判定為具備防塵布。
+                        </p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                        <div class="font-bold text-cyan-400 text-xs mb-1">B. 表面顆粒紋理方差 (Laplacian Variance)</div>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            未覆蓋之砂石、土方或營建廢土，表面具有破碎粗糙之高頻邊緣特徵（拉普拉斯方差 σ² > 120）；合規平整帆布表面平滑，方差極低。雙重特徵交叉驗證，杜絕誤判。
+                        </p>
+                    </div>
+                </div>
+
+                <h4 class="font-bold text-white flex items-center space-x-1.5 pt-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>3. 違規自動警報與抓拍</span>
+                </h4>
+                <p class="text-slate-400 pl-3">
+                    當判定結果為 <code class="text-rose-400 bg-rose-950/60 px-1.5 py-0.5 rounded font-mono text-xs">UNCOVERED_TRUCK</code> 時，系統自動在畫面上框標紅色警告框，標記為車斗未依規定覆蓋違規，自動快照入庫並通知稽查後台。
+                </p>
+            </div>
+        </div>
+
+        <!-- 模組二：道路髒污色差校正與面積標註模組 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                <div class="flex items-center space-x-2.5">
+                    <span class="text-2xl">🚨</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-rose-300">模組二：道路髒污 Color Difference 校正與面積標註模組</h3>
+                        <p class="text-xs text-slate-400">核定規範：計畫書經費表 C-3 項目（色差分割、污染面積比率、斑塊輪廓描繪）</p>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-rose-950 text-rose-400 border border-rose-800">C-3 核定規格</span>
+            </div>
+
+            <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                <h4 class="font-bold text-white flex items-center space-x-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                    <span>1. CIE L*a*b* 色差差分抗光影演算法 (Color Difference)</span>
+                </h4>
+                <p class="text-slate-400 pl-3">
+                    傳統 RGB 空間極易受日光強度、陰影、車輛投影等光照變化影響。本模組將即時影像轉換為<b>感知均勻之 CIE L*a*b* 色彩空間</b>，將亮度通道（L*）與色度通道（a*, b*）分離，精確計算與當前時段乾淨基準樣（Clean Baseline）之色差歐氏距離：
+                </p>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs text-center text-emerald-400 overflow-x-auto">
+                    ΔE = √[ (L*₁ - L*₂)² + (a*₁ - a*₂)² + (b*₁ - b*₂)² ]
+                </div>
+
+                <h4 class="font-bold text-white flex items-center space-x-1.5 pt-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                    <span>2. 形態學濾波與精確污染面積計算 (Muddy Area Percentage)</span>
+                </h4>
+                <p class="text-slate-400 pl-3">
+                    透過形態學開閉運算消除相機噪點，並計算泥濘像素佔 ROI 總有效像素之精準百分比（<code class="text-rose-400 font-bold font-mono">muddy_area_pct</code>）。當面積超過閾值（如 2.5%）且連續 3 幀確認，立即觸發污染事件。
+                </p>
+
+                <h4 class="font-bold text-white flex items-center space-x-1.5 pt-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                    <span>3. 污染斑塊位置輪廓標註 (Contour Extraction)</span>
+                </h4>
+                <p class="text-slate-400 pl-3">
+                    採用邊緣輪廓提取演算法（<code class="text-yellow-400 font-mono">cv2.findContours</code>），在即時畫面與抓拍快照上以亮黃色/亮紅色連續多邊形將每一處泥濘痕跡清晰描繪出來，清楚標明污染範圍。
+                </p>
+            </div>
+        </div>
+
+        <!-- 模組三與四：車牌特寫與科技執法二合一舉證單 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                <div class="flex items-center space-x-2.5">
+                    <span class="text-2xl">🎯</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-purple-300">模組三：運輸車輛帶泥舉證與車牌鎖定 (LPR & Evidence Synthesizer)</h3>
+                        <p class="text-xs text-slate-400">核定規範：計畫書第 5 頁科技執法舉證規範（車輛責任歸屬與法定舉證單）</p>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-purple-950 text-purple-400 border border-purple-800">科技執法規範</span>
+            </div>
+
+            <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                <h4 class="font-bold text-white flex items-center space-x-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>1. 車輛緩衝隊列與車牌辨識 (LPR FIFO Buffer)</span>
+                </h4>
+                <p class="text-slate-400 pl-3">
+                    當砂石車駛過出入口時，LPR 模組自動鎖定車頭與車牌候選區域（青色科技執法框），即時識別車牌號碼（如 <code class="text-cyan-400 font-mono font-bold">HAA-5678</code>），並將車身特寫置入 30 秒滑動隊列中暫存。
+                </p>
+
+                <h4 class="font-bold text-white flex items-center space-x-1.5 pt-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>2. 帶泥時空歸因關聯 (Spatiotemporal Attribution)</span>
+                </h4>
+                <p class="text-slate-400 pl-3">
+                    當車輛駛離後，路面若偵測出拖曳車胎泥痕，系統啟動時空歸因演算法，將該泥痕事件自動關聯至剛剛駛出的卡車，建立無可辯駁的因果責任鏈條。
+                </p>
+
+                <h4 class="font-bold text-white flex items-center space-x-1.5 pt-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>3. 花蓮縣環保局「二合一科技執法舉證單」自動合成</span>
+                </h4>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
+                    <div class="flex items-center text-purple-400 font-bold">
+                        <span>📋 官方舉證單合成規範：</span>
+                    </div>
+                    <ul class="list-disc list-inside text-slate-400 space-y-1.5 pl-1">
+                        <li><b class="text-slate-200">左側影像：</b>涉嫌卡車行經特寫、車牌號碼標註與車斗未覆蓋現場快照。</li>
+                        <li><b class="text-slate-200">右側影像：</b>地面泥濘色差輪廓標註圖與污染面積百分比數值。</li>
+                        <li><b class="text-slate-200">法定稽查邊界：</b>壓印「花蓮縣環境保護局 營建工程車輛帶泥污染舉證單」抬頭、違規時間、相機位置與舉證單號，可直接用於依法開罰或稽查告發。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部版權宣告 -->
+        <div class="text-center py-6 text-xs text-slate-600 border-t border-slate-800">
+            花蓮營建路污辨識系統 | 依據花蓮縣環境保護局計畫規範建置 | 智慧辨識核心說明手冊
+        </div>
+    </div>
+</body>
+</html>
