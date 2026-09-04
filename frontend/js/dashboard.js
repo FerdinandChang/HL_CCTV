@@ -408,11 +408,11 @@ function fetchVideos() {
             const tbody = document.getElementById("video-table-body");
             if (!tbody) return;
             if (!data.videos || data.videos.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">尚無錄影檔紀錄</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">尚無錄影檔紀錄</td></tr>`;
                 return;
             }
             tbody.innerHTML = data.videos.map(v => `
-                <tr class="border-b border-slate-800/50 hover:bg-slate-800/60 transition cursor-pointer" onclick="openVideoModal('${v.filename}', ${v.muddy_count})">
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/60 transition cursor-pointer" onclick="openVideoModal('${v.filename}', ${v.muddy_count || 0}, ${v.uncovered_count || 0})">
                     <td class="py-2.5 px-3 font-mono text-emerald-300 font-bold flex items-center space-x-1.5">
                         <span>🎬</span>
                         <span>${v.filename}</span>
@@ -424,8 +424,13 @@ function fetchVideos() {
                     </td>
                     <td class="py-2.5 px-3">${v.total_sampled}</td>
                     <td class="py-2.5 px-3">
-                        <span class="px-2 py-0.5 rounded text-xs font-black ${v.muddy_count > 0 ? 'bg-red-950 text-red-400 border border-red-800' : 'text-slate-400'}">
-                            ${v.muddy_count}
+                        <span class="px-2 py-0.5 rounded text-xs font-black ${v.muddy_count > 0 ? 'bg-red-950 text-red-400 border border-red-800' : 'text-slate-500'}">
+                            ${v.muddy_count || 0}
+                        </span>
+                    </td>
+                    <td class="py-2.5 px-3">
+                        <span class="px-2 py-0.5 rounded text-xs font-black ${v.uncovered_count > 0 ? 'bg-amber-950 text-amber-300 border border-amber-800' : 'text-slate-500'}">
+                            ${v.uncovered_count || 0}
                         </span>
                     </td>
                     <td class="py-2.5 px-3 text-slate-500">${v.processed_at || v.recorded_at || '--'}</td>
@@ -446,7 +451,7 @@ function triggerScan() {
 }
 
 // ── 全瀏覽器相容 H.265 即時回放播放器控制 ────────────────────────────────
-function openVideoModal(filename, muddyCount) {
+function openVideoModal(filename, muddyCount, uncoveredCount) {
     if (!filename || filename === "null" || filename === "--") return;
     
     activeVideoFilename = filename;
@@ -454,7 +459,9 @@ function openVideoModal(filename, muddyCount) {
     isPlaying = true;
 
     document.getElementById("modal-filename").textContent = filename;
-    document.getElementById("modal-muddy-count").textContent = `${muddyCount || 0} 筆`;
+    const badgeMuddy = `<span class="text-red-400">🚨 路污: ${muddyCount || 0}</span>`;
+    const badgeUncovered = `<span class="text-amber-400">⚠️ 車斗: ${uncoveredCount || 0}</span>`;
+    document.getElementById("modal-muddy-count").innerHTML = `${badgeMuddy} &nbsp;|&nbsp; ${badgeUncovered}`;
     document.getElementById("modal-download-btn").href = `/api/videos/stream/${filename}`;
     document.getElementById("video-modal").classList.remove("hidden");
 

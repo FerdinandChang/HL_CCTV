@@ -136,6 +136,7 @@ class TSVideoWatcher:
         frame_idx = 0
         total_sampled = 0
         muddy_count = 0
+        uncovered_count = 0
 
         while self.running:
             ret, frame = cap.read()
@@ -146,17 +147,23 @@ class TSVideoWatcher:
                 video_sec = frame_idx / fps
                 _, stats = analyzer.analyze_frame(frame, video_file=p.name, video_sec=video_sec)
                 total_sampled += 1
-                # 統計所有違規事件 (包含道路泥污、車斗未覆蓋防塵設施)
+                
                 stat_str = stats.get("status", "")
                 t_stat = stats.get("truck_bed", "")
-                if "MUDDY" in stat_str or "UNCOVERED" in t_stat or "VIOLATION" in stat_str:
+
+                # 1. 道路髒污污染獨立計數
+                if "MUDDY" in stat_str or "VIOLATION" in stat_str:
                     muddy_count += 1
+
+                # 2. 車斗未覆蓋獨立計數
+                if "UNCOVERED" in t_stat or "UNCOVERED_TRUCK" in stat_str:
+                    uncovered_count += 1
 
             frame_idx += 1
 
         cap.release()
-        complete_video_record(p.name, total_sampled, muddy_count, status="COMPLETED")
-        print(f"[TS Watcher] 分析完成: {p.name} | 總抽幀: {total_sampled} | 違規事件數: {muddy_count}")
+        complete_video_record(p.name, total_sampled, muddy_count, uncovered_count, status="COMPLETED")
+        print(f"[TS Watcher] 分析完成: {p.name} | 總抽幀: {total_sampled} | 路污: {muddy_count} | 車斗未覆蓋: {uncovered_count}")
 
     def scan_historical_records(self):
         if not self.record_dir.exists():
