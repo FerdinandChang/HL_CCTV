@@ -36,22 +36,18 @@
             <h2 class="text-lg font-bold text-emerald-300 flex items-center space-x-2">
                 <span>⚡ 系統協同辨識流程 (System Pipeline)</span>
             </h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                    <div class="text-emerald-400 font-bold text-sm">1. 車輛入出站感知</div>
-                    <p class="text-slate-400 leading-relaxed">YOLO 智慧追蹤進入 ROI 檢測區的砂石車/工程卡車，提取車頭特寫與車牌候選區。</p>
-                </div>
-                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                    <div class="text-amber-400 font-bold text-sm">2. 貨廂防塵判視 (C-2)</div>
+                    <div class="text-amber-400 font-bold text-sm">1. 貨廂防塵判視 (C-2 經費表)</div>
                     <p class="text-slate-400 leading-relaxed">定位車斗頂部，以色彩光譜與拉普拉斯紋理方差判別是否有合規覆蓋防塵帆布。</p>
                 </div>
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                    <div class="text-rose-400 font-bold text-sm">3. 路面色差校正 (C-3)</div>
+                    <div class="text-rose-400 font-bold text-sm">2. 路面色差與面積 (C-3 經費表)</div>
                     <p class="text-slate-400 leading-relaxed">車輛離站後即刻檢測路面，利用 CIE LAB 空間色差與輪廓提取精算泥污面積與斑塊。</p>
                 </div>
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                    <div class="text-purple-400 font-bold text-sm">4. 科技執法二合一舉證</div>
-                    <p class="text-slate-400 leading-relaxed">時空關聯追蹤涉嫌帶泥車輛，自動合成「違規卡車特寫 + 泥痕色差標註」法定舉證單。</p>
+                    <div class="text-purple-400 font-bold text-sm">3. 車輛感知與車牌鎖定 (LPR)</div>
+                    <p class="text-slate-400 leading-relaxed">YOLO 智慧追蹤進出站砂石車，青色框即時提取車牌號碼，並記錄帶泥時空歸因隊列。</p>
                 </div>
             </div>
         </div>
@@ -150,17 +146,17 @@
             </div>
         </div>
 
-        <!-- 模組三與四：車牌特寫與科技執法二合一舉證單 -->
+        <!-- 模組三：車輛辨識與車牌鎖定模組 -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl space-y-5">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
                 <div class="flex items-center space-x-2.5">
                     <span class="text-2xl">🎯</span>
                     <div>
-                        <h3 class="text-lg font-bold text-purple-300">模組三：運輸車輛帶泥舉證與車牌鎖定 (LPR & Evidence Synthesizer)</h3>
-                        <p class="text-xs text-slate-400">核定規範：計畫書第 5 頁科技執法舉證規範（車輛責任歸屬與法定舉證單）</p>
+                        <h3 class="text-lg font-bold text-purple-300">模組三：運輸車輛車牌辨識與特寫鎖定 (LPR & Vehicle Tracker)</h3>
+                        <p class="text-xs text-slate-400">核定規範：車輛進出站監控、車牌號碼提取與帶泥時空歸因追蹤</p>
                     </div>
                 </div>
-                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-purple-950 text-purple-400 border border-purple-800">科技執法規範</span>
+                <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-purple-950 text-purple-400 border border-purple-800">車輛辨識規範</span>
             </div>
 
             <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
@@ -177,23 +173,8 @@
                     <span>2. 帶泥時空歸因關聯 (Spatiotemporal Attribution)</span>
                 </h4>
                 <p class="text-slate-400 pl-3">
-                    當車輛駛離後，路面若偵測出拖曳車胎泥痕，系統啟動時空歸因演算法，將該泥痕事件自動關聯至剛剛駛出的卡車，建立無可辯駁的因果責任鏈條。
+                    當車輛駛離後，路面若偵測出拖曳車胎泥痕，系統啟動時空歸因演算法，將該泥痕事件自動關聯至剛剛駛出的卡車，精確記錄責任車輛之時間戳與車身影像特寫。
                 </p>
-
-                <h4 class="font-bold text-white flex items-center space-x-1.5 pt-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                    <span>3. 花蓮縣環保局「二合一科技執法舉證單」自動合成</span>
-                </h4>
-                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
-                    <div class="flex items-center text-purple-400 font-bold">
-                        <span>📋 官方舉證單合成規範：</span>
-                    </div>
-                    <ul class="list-disc list-inside text-slate-400 space-y-1.5 pl-1">
-                        <li><b class="text-slate-200">左側影像：</b>涉嫌卡車行經特寫、車牌號碼標註與車斗未覆蓋現場快照。</li>
-                        <li><b class="text-slate-200">右側影像：</b>地面泥濘色差輪廓標註圖與污染面積百分比數值。</li>
-                        <li><b class="text-slate-200">法定稽查邊界：</b>壓印「花蓮縣環境保護局 營建工程車輛帶泥污染舉證單」抬頭、違規時間、相機位置與舉證單號，可直接用於依法開罰或稽查告發。</li>
-                    </ul>
-                </div>
             </div>
         </div>
 
