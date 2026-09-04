@@ -67,14 +67,35 @@ def init_db():
         if "uncovered_count" not in cols:
             cursor.execute("ALTER TABLE video_records ADD COLUMN uncovered_count INTEGER DEFAULT 0")
 
+        # 遷移檢查：alerts 資料表增加 GPS 定位與管制點欄位
+        cursor.execute("PRAGMA table_info(alerts)")
+        alert_cols = [c[1] for c in cursor.fetchall()]
+        if "gps_lat" not in alert_cols:
+            cursor.execute("ALTER TABLE alerts ADD COLUMN gps_lat REAL DEFAULT 23.991528")
+        if "gps_lng" not in alert_cols:
+            cursor.execute("ALTER TABLE alerts ADD COLUMN gps_lng REAL DEFAULT 121.621345")
+        if "location_name" not in alert_cols:
+            cursor.execute("ALTER TABLE alerts ADD COLUMN location_name TEXT DEFAULT '花蓮市美崙營建管制站'")
+
         conn.commit()
 
-def save_alert_event(cam_id, status, confidence, edge_density, snapshot_file="", video_file="", video_sec=0.0):
+def save_alert_event(cam_id, status, confidence, edge_density, snapshot_file="", video_file="", video_sec=0.0, gps_lat=None, gps_lng=None, location_name=""):
+    # 若無指定 GPS 座標，依 cam_id 提供真實預設值
+    if gps_lat is None or gps_lng is None:
+        if cam_id == "cam_11":
+            gps_lat = 23.994821
+            gps_lng = 121.623102
+            location_name = location_name or "花蓮美崙外圍砂石車聯絡道"
+        else:
+            gps_lat = 23.991528
+            gps_lng = 121.621345
+            location_name = location_name or "花蓮美崙營建示範站出入口"
+
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO alerts (cam_id, timestamp, status, confidence, edge_density, snapshot_file, video_file, video_sec)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO alerts (cam_id, timestamp, status, confidence, edge_density, snapshot_file, video_file, video_sec, gps_lat, gps_lng, location_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             cam_id,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -83,7 +104,10 @@ def save_alert_event(cam_id, status, confidence, edge_density, snapshot_file="",
             float(edge_density),
             snapshot_file,
             video_file,
-            float(video_sec)
+            float(video_sec),
+            float(gps_lat),
+            float(gps_lng),
+            location_name
         ))
         conn.commit()
         return cursor.lastrowid

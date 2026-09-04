@@ -66,14 +66,24 @@ def favicon():
 @app.get("/api/cameras")
 def get_cameras():
     cfg = Config.load_camera_config()
-    return [{"id": k, "name": v.get("name", k)} for k, v in cfg.items()]
+    return [{
+        "id": k, 
+        "name": v.get("name", k),
+        "location": v.get("location", "花蓮市美崙營建管制站"),
+        "gps_lat": v.get("gps_lat", 23.991528),
+        "gps_lng": v.get("gps_lng", 121.621345)
+    } for k, v in cfg.items()]
 
 @app.get("/api/status")
 def get_current_status(cam_id: str = "cam_10"):
     analyzer = analyzers.get(cam_id, list(analyzers.values())[0])
+    cam_cfg = analyzer.cfg
     return {
         "cam_id": analyzer.cam_id,
-        "name": analyzer.cfg.get("name", analyzer.cam_id),
+        "name": cam_cfg.get("name", analyzer.cam_id),
+        "location": cam_cfg.get("location", "花蓮市美崙營建管制站"),
+        "gps_lat": cam_cfg.get("gps_lat", 23.991528),
+        "gps_lng": cam_cfg.get("gps_lng", 121.621345),
         "status": analyzer.current_status,
         "confidence": round(analyzer.confidence, 1),
         "edge_density": round(analyzer.edge_density, 3),
@@ -254,17 +264,24 @@ def export_alerts_report(days: int = 7):
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT id, cam_id, timestamp, status, confidence, edge_density, snapshot_file, video_file, video_sec
+            SELECT id, cam_id, timestamp, status, confidence, edge_density, snapshot_file, video_file, video_sec, gps_lat, gps_lng, location_name
             FROM alerts
             ORDER BY id DESC
         ''')
         rows = cursor.fetchall()
 
+    cameras_cfg = Config.load_camera_config()
     output = io.StringIO()
     output.write("\ufeff")
     writer = csv.writer(output)
-    writer.writerow(["事件編號", "相機名稱", "發生時間", "違規類型", "詳細狀態", "信心度(%)", "紋理/覆蓋特徵", "快照檔名", "對應錄影檔", "影片內秒數"])
+    writer.writerow(["事件編號", "相機名稱", "管制站點/路段", "GPS 緯度 (Latitude)", "GPS 經度 (Longitude)", "發生時間", "違規類型", "詳細狀態", "信心度(%)", "紋理/覆蓋特徵", "快照檔名", "對應錄影檔", "影片內秒數"])
     for r in rows:
+        cam_info = cameras_cfg.get(r["cam_id"], {})
+        cam_name = cam_info.get("name", r["cam_id"])
+        lat = r["gps_lat"] or cam_info.get("gps_lat", 23.991528)
+        lng = r["gps_lng"] or cam_info.get("gps_lng", 121.621345)
+        loc = r["location_name"] or cam_info.get("location", "花蓮市美崙營建管制站")
+
         if r["status"] == "UNCOVERED_TRUCK":
             vtype = "車斗未依規定覆蓋防塵設施"
         elif r["status"] == "ATTRIBUTED_MUDDY":
@@ -274,6 +291,9 @@ def export_alerts_report(days: int = 7):
         writer.writerow([
             r["id"],
             cam_name,
+            loc,
+            f"{lat:.6f}",
+            f"{lng:.6f}",
             r["timestamp"],
             vtype,
             r["status"],

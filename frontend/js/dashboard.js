@@ -260,6 +260,19 @@ function fetchStatus() {
                 }
             }
 
+            // 更新即時 GPS 座標與管制點名稱
+            if (data.gps_lat && data.gps_lng) {
+                const gpsText = `${data.gps_lat.toFixed(4)}°N, ${data.gps_lng.toFixed(4)}°E`;
+                const gpsElem = document.getElementById("gps-coords");
+                if (gpsElem) gpsElem.textContent = gpsText;
+                const gpsLink = document.getElementById("gps-coords-link");
+                if (gpsLink) gpsLink.href = `https://www.google.com/maps?q=${data.gps_lat},${data.gps_lng}`;
+            }
+            if (data.location) {
+                const locElem = document.getElementById("gps-loc-name");
+                if (locElem) locElem.textContent = data.location;
+            }
+
             // 行經車輛鎖定 (精美中文化)
             if (suspectVehVal) {
                 let sVeh = data.suspect_vehicle || "無行經車輛";
@@ -387,12 +400,16 @@ function fetchAlerts() {
                     borderStyle = "border-purple-600/80 bg-purple-950/40 shadow-lg";
                 }
 
+                const gpsStr = a.gps_lat ? `${a.gps_lat.toFixed(4)}, ${a.gps_lng.toFixed(4)}` : '23.9915, 121.6213';
                 return `
                     <div class="flex space-x-3 p-2.5 rounded-xl border ${borderStyle} hover:bg-slate-800 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
                         <img src="/api/snapshots/${a.snapshot_file}" class="w-20 h-14 object-cover rounded-lg border border-slate-700">
                         <div class="text-xs flex-1 flex flex-col justify-center">
                             <div class="${titleColor}">${titleText}</div>
-                            <div class="text-slate-400 text-[11px]">${a.timestamp}</div>
+                            <div class="text-slate-400 text-[11px] flex items-center justify-between">
+                                <span>${a.timestamp}</span>
+                                <span class="text-emerald-400 font-mono text-[10px] bg-emerald-950/60 px-1 rounded border border-emerald-800/60">📍 ${gpsStr}</span>
+                            </div>
                             ${a.video_file ? `<div class="text-emerald-400 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
                         </div>
                     </div>

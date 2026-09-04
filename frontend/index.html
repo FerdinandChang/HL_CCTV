@@ -211,6 +211,17 @@
                         <span id="cam-tag" class="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">CAM_10</span>
                     </div>
 
+                    <!-- GPS 定位與 GIS 座標資訊列 -->
+                    <div class="flex items-center justify-between text-[11px] font-mono bg-slate-950/70 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+                        <div class="flex items-center space-x-1.5 text-slate-400 truncate">
+                            <span class="text-rose-400">📍</span>
+                            <span id="gps-loc-name" class="truncate">花蓮市美崙營建管制站</span>
+                        </div>
+                        <a id="gps-coords-link" href="https://www.google.com/maps?q=23.991528,121.621345" target="_blank" class="text-emerald-400 hover:text-emerald-300 underline font-bold whitespace-nowrap ml-1" title="點擊開啟 Google Maps 檢視精確定位">
+                            <span id="gps-coords">23.9915°N, 121.6213°E</span>
+                        </a>
+                    </div>
+
                     <!-- 主狀態徽章 -->
                     <div id="status-badge" class="py-3 px-4 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col items-center justify-center text-center shadow-inner">
                         <div id="status-text-zh" class="text-xl font-black tracking-wide text-white mb-0.5">系統初始化中...</div>
