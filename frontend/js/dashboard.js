@@ -208,34 +208,34 @@ function fetchStatus() {
             const streakText = document.getElementById("streak-text");
             const streakBar = document.getElementById("streak-bar");
 
-            // 格式化主狀態與雙語徽章
+            // 格式化主狀態與雙語徽章 (支援白天/夜間模式自適應)
             const rawStatus = data.status || "";
             let zhStatus = "路面清潔良好";
-            let badgeStyle = "bg-emerald-950/60 border-emerald-800 text-emerald-400";
+            let badgeStyle = "bg-emerald-950/60 border-emerald-800 text-emerald-400 status-clean";
 
             if (data.is_alert || rawStatus.includes("MUDDY")) {
                 zhStatus = "🚨 檢測到路面泥濘髒污";
-                badgeStyle = "bg-red-950/80 border-red-700 text-red-400 animate-pulse";
+                badgeStyle = "bg-red-950/80 border-red-700 text-red-400 status-muddy animate-pulse";
                 if (statusCard) statusCard.classList.add("pulse-alert");
             } else if (rawStatus.includes("UNCOVERED TRUCK")) {
                 zhStatus = "⚠️ 砂石車違規：車斗未覆蓋";
-                badgeStyle = "bg-amber-950/80 border-amber-600 text-amber-400 animate-pulse";
+                badgeStyle = "bg-amber-950/80 border-amber-600 text-amber-400 status-uncovered animate-pulse";
                 if (statusCard) statusCard.classList.remove("pulse-alert");
             } else if (rawStatus.includes("PASSING") || rawStatus.includes("INSPECTED")) {
                 zhStatus = "🚛 工程砂石車過站受檢中";
-                badgeStyle = "bg-cyan-950/80 border-cyan-700 text-cyan-400";
+                badgeStyle = "bg-cyan-950/80 border-cyan-700 text-cyan-400 status-passing";
                 if (statusCard) statusCard.classList.remove("pulse-alert");
             } else if (rawStatus.includes("Blocked")) {
                 zhStatus = "🚗 車輛 / 人員通行遮擋";
-                badgeStyle = "bg-amber-950/70 border-amber-800 text-amber-400";
+                badgeStyle = "bg-amber-950/70 border-amber-800 text-amber-400 status-blocked";
                 if (statusCard) statusCard.classList.remove("pulse-alert");
             } else if (rawStatus.includes("CLEAN")) {
                 zhStatus = "✅ 路面清潔良好";
-                badgeStyle = "bg-emerald-950/60 border-emerald-800 text-emerald-400";
+                badgeStyle = "bg-emerald-950/60 border-emerald-800 text-emerald-400 status-clean";
                 if (statusCard) statusCard.classList.remove("pulse-alert");
             } else {
                 zhStatus = "🔍 監測採集中";
-                badgeStyle = "bg-slate-950/80 border-slate-800 text-slate-300";
+                badgeStyle = "bg-slate-950/80 border-slate-800 text-slate-300 status-idle";
                 if (statusCard) statusCard.classList.remove("pulse-alert");
             }
 
@@ -252,9 +252,9 @@ function fetchStatus() {
             if (truckBedVal) {
                 const bedStr = data.truck_bed_status || "無卡車";
                 if (bedStr.includes("UNCOVERED")) {
-                    truckBedVal.innerHTML = `<span class="text-rose-400 font-bold flex items-center space-x-1"><span>⚠️ 未覆蓋</span></span>`;
+                    truckBedVal.innerHTML = `<span class="text-rose-500 dark:text-rose-400 font-bold flex items-center space-x-1"><span>⚠️ 未覆蓋</span></span>`;
                 } else if (bedStr.includes("COVERED")) {
-                    truckBedVal.innerHTML = `<span class="text-emerald-400 font-bold flex items-center space-x-1"><span>✅ 已覆蓋</span></span>`;
+                    truckBedVal.innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1"><span>✅ 已覆蓋</span></span>`;
                 } else {
                     truckBedVal.innerHTML = `<span class="text-slate-400 font-normal">無卡車</span>`;
                 }
@@ -273,14 +273,14 @@ function fetchStatus() {
                 if (locElem) locElem.textContent = data.location;
             }
 
-            // 行經車輛鎖定 (精美中文化)
+            // 行經車輛鎖定 (精美中文化與雙模式自適應)
             if (suspectVehVal) {
                 let sVeh = data.suspect_vehicle || "無行經車輛";
                 sVeh = sVeh.replace("Truck", "🚛 砂石車").replace("Vehicle", "🚗 車輛");
                 suspectVehVal.textContent = sVeh;
                 suspectVehVal.className = sVeh.includes("無") 
-                    ? "text-slate-500 font-normal text-xs" 
-                    : "text-sky-300 font-bold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800 text-xs";
+                    ? "text-slate-400 font-normal text-xs" 
+                    : "veh-active text-sky-300 font-bold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800 text-xs";
             }
 
             if (streakText) streakText.textContent = `${data.streak || 0} / ${data.streak_threshold || 3} 幀`;
@@ -387,26 +387,26 @@ function fetchAlerts() {
 
             list.innerHTML = data.alerts.map(a => {
                 let titleText = "🚨 道路髒污污染";
-                let titleColor = "text-red-400 font-bold";
-                let borderStyle = "border-red-900/50 bg-slate-800/80";
+                let titleColor = "text-rose-500 dark:text-rose-400 font-bold";
+                let borderStyle = "border-red-900/50 bg-slate-800/80 modal-card-muddy";
 
                 if (a.status === "UNCOVERED_TRUCK" || (a.status && a.status.includes("UNCOVERED"))) {
                     titleText = "⚠️ 車斗未依規定覆蓋防塵設施";
-                    titleColor = "text-amber-400 font-bold";
-                    borderStyle = "border-amber-900/60 bg-slate-850";
+                    titleColor = "text-amber-500 dark:text-amber-400 font-bold";
+                    borderStyle = "border-amber-900/60 bg-slate-850 modal-card-uncovered";
                 }
 
                 const gpsStr = a.gps_lat ? `${a.gps_lat.toFixed(4)}, ${a.gps_lng.toFixed(4)}` : '23.9915, 121.6213';
                 return `
-                    <div class="flex space-x-3 p-2.5 rounded-xl border ${borderStyle} hover:bg-slate-800 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
+                    <div class="flex space-x-3 p-2.5 rounded-xl border ${borderStyle} hover:opacity-90 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
                         <img src="/api/snapshots/${a.snapshot_file}" class="w-20 h-14 object-cover rounded-lg border border-slate-700">
                         <div class="text-xs flex-1 flex flex-col justify-center">
                             <div class="${titleColor}">${titleText}</div>
                             <div class="text-slate-400 text-[11px] flex items-center justify-between">
                                 <span>${a.timestamp}</span>
-                                <span class="text-emerald-400 font-mono text-[10px] bg-emerald-950/60 px-1 rounded border border-emerald-800/60">📍 ${gpsStr}</span>
+                                <span class="text-emerald-600 dark:text-emerald-400 font-mono text-[10px] bg-emerald-50 dark:bg-emerald-950/60 px-1 rounded border border-emerald-200 dark:border-emerald-800/60">📍 ${gpsStr}</span>
                             </div>
-                            ${a.video_file ? `<div class="text-emerald-400 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
+                            ${a.video_file ? `<div class="text-emerald-600 dark:text-emerald-400 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
                         </div>
                     </div>
                 `;
@@ -429,29 +429,29 @@ function fetchVideos() {
             }
             tbody.innerHTML = data.videos.map(v => `
                 <tr class="border-b border-slate-800/50 hover:bg-slate-800/60 transition cursor-pointer" onclick="openVideoModal('${v.filename}', 'all')">
-                    <td class="py-2.5 px-3 font-mono text-emerald-300 font-bold flex items-center space-x-1.5 whitespace-nowrap">
+                    <td class="py-2.5 px-3 font-mono video-filename-text text-emerald-300 font-bold flex items-center space-x-1.5 whitespace-nowrap">
                         <span>🎬</span>
                         <span>${v.filename}</span>
                     </td>
                     <td class="py-2.5 px-2 text-center whitespace-nowrap">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${v.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${v.status === 'COMPLETED' ? 'badge-completed bg-emerald-950 text-emerald-400 border border-emerald-800' : 'badge-queued bg-amber-950 text-amber-400 border border-amber-800'}">
                             ${v.status}
                         </span>
                     </td>
                     <td class="py-2.5 px-2 text-center whitespace-nowrap font-mono text-slate-300">${v.total_sampled}</td>
                     <td class="py-2.5 px-2 text-center whitespace-nowrap" onclick="event.stopPropagation(); openVideoModal('${v.filename}', 'muddy')" title="點擊檢視本片道路髒污抓拍">
-                        <span class="px-2.5 py-0.5 rounded text-xs font-black inline-flex items-center space-x-1 hover:scale-110 transition shadow-sm ${v.muddy_count > 0 ? 'bg-red-950 text-red-400 border border-red-800 cursor-pointer' : 'text-slate-500'}">
+                        <span class="px-2.5 py-0.5 rounded text-xs font-black inline-flex items-center space-x-1 hover:scale-110 transition shadow-sm ${v.muddy_count > 0 ? 'badge-muddy-count bg-red-950 text-red-400 border border-red-800 cursor-pointer' : 'text-slate-400'}">
                             <span>${v.muddy_count || 0}</span>
                         </span>
                     </td>
                     <td class="py-2.5 px-2 text-center whitespace-nowrap" onclick="event.stopPropagation(); openVideoModal('${v.filename}', 'uncovered')" title="點擊檢視本片車斗違規抓拍">
-                        <span class="px-2.5 py-0.5 rounded text-xs font-black inline-flex items-center space-x-1 hover:scale-110 transition shadow-sm ${v.uncovered_count > 0 ? 'bg-amber-950 text-amber-300 border border-amber-800 cursor-pointer' : 'text-slate-500'}">
+                        <span class="px-2.5 py-0.5 rounded text-xs font-black inline-flex items-center space-x-1 hover:scale-110 transition shadow-sm ${v.uncovered_count > 0 ? 'badge-uncovered-count bg-amber-950 text-amber-300 border border-amber-800 cursor-pointer' : 'text-slate-400'}">
                             <span>${v.uncovered_count || 0}</span>
                         </span>
                     </td>
                     <td class="py-2.5 px-2.5 text-center text-slate-400 whitespace-nowrap font-mono text-[11px]">${v.processed_at || v.recorded_at || '--'}</td>
                     <td class="py-2.5 px-2.5 text-center whitespace-nowrap" onclick="event.stopPropagation(); openVideoModal('${v.filename}', 'all')">
-                        <button class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded text-xs border border-slate-600 font-medium whitespace-nowrap shadow-sm">
+                        <button class="btn-detail bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded text-xs border border-slate-600 font-medium whitespace-nowrap shadow-sm">
                             🔍 詳情回放
                         </button>
                     </td>
@@ -592,13 +592,13 @@ function switchModalTab(tab) {
     if (tabMuddy) tabMuddy.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition text-rose-400 hover:bg-slate-800/60";
     if (tabUncovered) tabUncovered.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition text-amber-400 hover:bg-slate-800/60";
 
-    // 選中高亮
+    // 選中高亮 (加入深淺自適應類別)
     if (currentModalTab === 'all' && tabAll) {
-        tabAll.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-slate-800 text-white shadow-sm";
+        tabAll.className = "modal-tab-active-all flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-slate-800 text-white shadow-sm";
     } else if (currentModalTab === 'muddy' && tabMuddy) {
-        tabMuddy.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-rose-950 text-rose-300 border border-rose-800 shadow-sm";
+        tabMuddy.className = "modal-tab-active-muddy flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-rose-950 text-rose-300 border border-rose-800 shadow-sm";
     } else if (currentModalTab === 'uncovered' && tabUncovered) {
-        tabUncovered.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-amber-950 text-amber-300 border border-amber-800 shadow-sm";
+        tabUncovered.className = "modal-tab-active-uncovered flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-amber-950 text-amber-300 border border-amber-800 shadow-sm";
     }
 
     const container = document.getElementById("modal-alerts-container");
@@ -622,7 +622,7 @@ function switchModalTab(tab) {
         if (currentModalTab === 'muddy') {
             container.innerHTML = `
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-2">
-                    <div class="text-rose-400 font-bold text-xs">🚨 本片無道路髒污違規紀錄</div>
+                    <div class="text-rose-500 dark:text-rose-400 font-bold text-xs">🚨 本片無道路髒污違規紀錄</div>
                     <div class="text-[11px] text-slate-400 leading-relaxed">
                         經 AI 抽幀比對，此 30 分鐘路面乾淨未達污染標準。<br>
                         ${uncoveredList.length > 0 ? `
@@ -636,7 +636,7 @@ function switchModalTab(tab) {
         } else if (currentModalTab === 'uncovered') {
             container.innerHTML = `
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-2">
-                    <div class="text-amber-400 font-bold text-xs">⚠️ 本片無車斗未覆蓋違規紀錄</div>
+                    <div class="text-amber-500 dark:text-amber-400 font-bold text-xs">⚠️ 本片無車斗未覆蓋違規紀錄</div>
                     <div class="text-[11px] text-slate-400 leading-relaxed">
                         行經卡車車斗防塵網均依規定妥善覆蓋。<br>
                         ${muddyList.length > 0 ? `
@@ -650,7 +650,7 @@ function switchModalTab(tab) {
         } else {
             container.innerHTML = `
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-1">
-                    <div class="text-emerald-400 font-bold text-xs">✅ 無違規事件記錄</div>
+                    <div class="text-emerald-500 dark:text-emerald-400 font-bold text-xs">✅ 無違規事件記錄</div>
                     <div class="text-[11px] text-slate-500">此 30 分鐘錄影全程合規（無路面泥污與車斗未覆蓋）。</div>
                 </div>
             `;
@@ -664,15 +664,15 @@ function switchModalTab(tab) {
         const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 
         let tagTitle = "🚨 道路髒污污染";
-        let tagColor = "text-rose-400 font-bold";
-        let itemBorder = "border-rose-900/60 bg-rose-950/20";
-        let btnStyle = "bg-rose-950/80 hover:bg-rose-800 text-rose-200 border border-rose-700/60";
+        let tagColor = "text-rose-500 dark:text-rose-400 font-bold";
+        let itemBorder = "modal-card-muddy border-rose-900/60 bg-rose-950/20";
+        let btnStyle = "modal-btn-jump-muddy bg-rose-950/80 hover:bg-rose-800 text-rose-200 border border-rose-700/60";
 
         if (a.status === "UNCOVERED_TRUCK" || (a.status && a.status.includes("UNCOVERED"))) {
             tagTitle = "⚠️ 車斗未覆蓋防塵設施";
-            tagColor = "text-amber-400 font-bold";
-            itemBorder = "border-amber-700/60 bg-amber-950/25";
-            btnStyle = "bg-amber-950/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60";
+            tagColor = "text-amber-500 dark:text-amber-400 font-bold";
+            itemBorder = "modal-card-uncovered border-amber-700/60 bg-amber-950/25";
+            btnStyle = "modal-btn-jump-uncovered bg-amber-950/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60";
         }
 
         const confVal = a.confidence ? a.confidence.toFixed(1) : '95.0';
