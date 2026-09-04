@@ -220,9 +220,9 @@ class RoadAnalyzer:
                         # 若為卡車 (class 7)，執行車斗防塵設施判視
                         if int(cls_id) == 7:
                             truck_boxes.append([x1, y1, x2, y2])
-                            bed_crop, bed_box = self.truck_analyzer.extract_truck_bed_roi(frame, [x1, y1, x2, y2])
+                            bed_crop, bed_box = self.truck_analyzer.extract_truck_bed_roi(frame, [x1, y1, x2, y2], plate_box=p_box)
                             if bed_crop is not None and bed_crop.size > 0:
-                                is_cov, bed_status, bed_conf, bed_details = self.truck_analyzer.analyze_coverage(bed_crop)
+                                is_cov, bed_status, bed_conf, bed_details = self.truck_analyzer.analyze_coverage(bed_crop, plate_id=p_num)
                                 annotated = self.truck_analyzer.draw_annotation(
                                     annotated, [x1, y1, x2, y2], bed_box, bed_status, bed_conf, bed_details
                                 )
