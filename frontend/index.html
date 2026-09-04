@@ -79,7 +79,7 @@
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen transition-colors duration-300">
-    <div class="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
+    <div class="w-full max-w-[1720px] mx-auto p-3 sm:p-4 lg:p-6">
         <!-- 頂部列 (RWD 自適應排版) -->
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5 mb-5 border-b border-slate-800 pb-4">
             <div class="flex items-center space-x-2.5 flex-wrap">
@@ -117,10 +117,10 @@
             </div>
         </header>
 
-        <!-- 主體網格 -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6 items-stretch">
-            <!-- 視訊與 ROI 區域 (佔 2 欄) -->
-            <div class="lg:col-span-2 flex flex-col space-y-4">
+        <!-- 主體網格 (12 欄自適應佈局：左側 8~9 欄充裕展開，右側 3~4 欄精緻緊湊) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
+            <!-- 視訊與 ROI 區域 (佔 8 ~ 9 欄) -->
+            <div class="lg:col-span-8 xl:col-span-8 2xl:col-span-9 flex flex-col space-y-4">
                 <div id="video-wrapper" class="bg-slate-900 p-2 rounded-2xl border border-slate-800 shadow-2xl relative">
                     <div class="relative bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center">
                         <!-- 即時 MJPEG 影像 -->
@@ -146,7 +146,7 @@
                     </div>
                 </div>
 
-                <!-- 錄影檔 (.ts) 批次分析進度表 (flex-1 與右側警報卡片底部 100% 嚴格等距齊平) -->
+                <!-- 錄影檔 (.ts) 批次分析進度表 (自然展開，絕不橫移截斷) -->
                 <div class="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 flex-1 flex flex-col min-h-[380px]">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-sm font-bold text-slate-300 flex items-center flex-wrap gap-1">
@@ -155,16 +155,16 @@
                         </h3>
                     </div>
                     <div class="overflow-x-auto flex-1 pr-1 border border-slate-800/60 rounded-xl">
-                        <table class="w-full min-w-[620px] text-xs text-left text-slate-300">
-                            <thead class="text-slate-500 border-b border-slate-800 uppercase sticky top-0 bg-slate-900 z-10">
+                        <table class="w-full text-xs text-left text-slate-300">
+                            <thead class="text-slate-500 border-b border-slate-800 uppercase sticky top-0 bg-slate-900 z-10 text-[11px]">
                                 <tr>
                                     <th class="py-2.5 px-3 whitespace-nowrap">檔名</th>
-                                    <th class="py-2.5 px-3 whitespace-nowrap">狀態</th>
-                                    <th class="py-2.5 px-3 whitespace-nowrap">抽幀數</th>
-                                    <th class="py-2.5 px-3 whitespace-nowrap text-rose-400 font-bold">🚨 路污次數</th>
-                                    <th class="py-2.5 px-3 whitespace-nowrap text-amber-400 font-bold">⚠️ 車斗未覆蓋</th>
-                                    <th class="py-2.5 px-3 whitespace-nowrap">分析完成時間</th>
-                                    <th class="py-2.5 px-3 text-right whitespace-nowrap">操作</th>
+                                    <th class="py-2.5 px-2 text-center whitespace-nowrap">狀態</th>
+                                    <th class="py-2.5 px-2 text-center whitespace-nowrap">抽幀數</th>
+                                    <th class="py-2.5 px-2 text-center whitespace-nowrap text-rose-400 font-bold">🚨 路污次數</th>
+                                    <th class="py-2.5 px-2 text-center whitespace-nowrap text-amber-400 font-bold">⚠️ 車斗未覆蓋</th>
+                                    <th class="py-2.5 px-2.5 text-center whitespace-nowrap">分析完成時間</th>
+                                    <th class="py-2.5 px-2.5 text-center whitespace-nowrap">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="video-table-body">
@@ -175,8 +175,8 @@
                 </div>
             </div>
 
-            <!-- 右側即時狀態與教學面板 (佔 1 欄) -->
-            <div class="flex flex-col space-y-4">
+            <!-- 右側即時狀態與教學面板 (佔 3 ~ 4 欄) -->
+            <div class="lg:col-span-4 xl:col-span-4 2xl:col-span-3 flex flex-col space-y-4">
                 <!-- 硬碟容量健康狀態卡片 -->
                 <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
                     <div class="flex justify-between items-center mb-1">
