@@ -386,18 +386,14 @@ function fetchAlerts() {
             }
 
             list.innerHTML = data.alerts.map(a => {
-                let titleText = a.status;
+                let titleText = "🚨 道路髒污污染";
                 let titleColor = "text-red-400 font-bold";
                 let borderStyle = "border-red-900/50 bg-slate-800/80";
 
-                if (a.status === "UNCOVERED_TRUCK") {
+                if (a.status === "UNCOVERED_TRUCK" || (a.status && a.status.includes("UNCOVERED"))) {
                     titleText = "⚠️ 車斗未依規定覆蓋防塵設施";
                     titleColor = "text-amber-400 font-bold";
                     borderStyle = "border-amber-900/60 bg-slate-850";
-                } else if (a.status === "ATTRIBUTED_MUDDY") {
-                    titleText = "🎯 科技執法車輛帶泥舉證單 (二合一)";
-                    titleColor = "text-purple-300 font-black";
-                    borderStyle = "border-purple-600/80 bg-purple-950/40 shadow-lg";
                 }
 
                 const gpsStr = a.gps_lat ? `${a.gps_lat.toFixed(4)}, ${a.gps_lng.toFixed(4)}` : '23.9915, 121.6213';
@@ -555,8 +551,7 @@ function loadVideoAlerts(filename) {
             currentModalAlerts = data.alerts || [];
 
             const muddyList = currentModalAlerts.filter(a => 
-                (a.status && a.status.includes('MUDDY') && !a.status.includes('UNCOVERED')) || 
-                (a.status && a.status.includes('ATTRIBUTED_MUDDY'))
+                a.status && a.status.includes('MUDDY') && !a.status.includes('UNCOVERED')
             );
             const uncoveredList = currentModalAlerts.filter(a => 
                 a.status === 'UNCOVERED_TRUCK' || (a.status && a.status.includes('UNCOVERED'))
@@ -610,8 +605,7 @@ function switchModalTab(tab) {
     if (!container) return;
 
     const muddyList = currentModalAlerts.filter(a => 
-        (a.status && a.status.includes('MUDDY') && !a.status.includes('UNCOVERED')) || 
-        (a.status && a.status.includes('ATTRIBUTED_MUDDY'))
+        a.status && a.status.includes('MUDDY') && !a.status.includes('UNCOVERED')
     );
     const uncoveredList = currentModalAlerts.filter(a => 
         a.status === 'UNCOVERED_TRUCK' || (a.status && a.status.includes('UNCOVERED'))
@@ -679,11 +673,6 @@ function switchModalTab(tab) {
             tagColor = "text-amber-400 font-bold";
             itemBorder = "border-amber-700/60 bg-amber-950/25";
             btnStyle = "bg-amber-950/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60";
-        } else if (a.status === "ATTRIBUTED_MUDDY") {
-            tagTitle = "🎯 科技執法帶泥舉證 (二合一)";
-            tagColor = "text-purple-300 font-black";
-            itemBorder = "border-purple-600/70 bg-purple-950/30";
-            btnStyle = "bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-600/60";
         }
 
         const confVal = a.confidence ? a.confidence.toFixed(1) : '95.0';

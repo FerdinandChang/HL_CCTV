@@ -109,10 +109,10 @@ class RoadAnalyzer:
         self.latest_truck_status = "無卡車"
         self.last_truck_alert_time = 0
 
-        # 運輸車輛帶泥舉證與車牌/車頭特寫管理模組
+        # 運輸車輛車牌辨識模組
         self.lpr_mgr = LPRVehicleManager(max_buffer_sec=30.0)
         self.latest_suspect_vehicle = "無行經車輛"
-        self.last_attributed_alert_time = 0
+
 
         self.roi_mask = None
         self.roi_area = 0
@@ -326,22 +326,7 @@ class RoadAnalyzer:
                         video_sec=video_sec
                     )
 
-                    # 【科技執法核心】若有剛駛離之涉嫌車輛，自動合成科技執法二合一舉證單
-                    if (time.time() - self.last_attributed_alert_time > 20.0):
-                        attr_snap, suspect_info = self.lpr_mgr.create_attributed_evidence(
-                            annotated, self.cam_id, self.muddy_area_pct, video_file, video_sec
-                        )
-                        if attr_snap:
-                            self.last_attributed_alert_time = time.time()
-                            save_alert_event(
-                                cam_id=self.cam_id,
-                                status="ATTRIBUTED_MUDDY",
-                                confidence=self.confidence,
-                                edge_density=self.edge_density,
-                                snapshot_file=attr_snap,
-                                video_file=video_file,
-                                video_sec=video_sec
-                            )
+
             elif label == 'clean':
                 self.current_status = f"CLEAN ({self.confidence:.1f}%)"
                 status_color = (0, 255, 0)

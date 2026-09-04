@@ -282,12 +282,10 @@ def export_alerts_report(days: int = 7):
         lng = r["gps_lng"] or cam_info.get("gps_lng", 121.621345)
         loc = r["location_name"] or cam_info.get("location", "花蓮市美崙營建管制站")
 
-        if r["status"] == "UNCOVERED_TRUCK":
+        if r["status"] == "UNCOVERED_TRUCK" or "UNCOVERED" in str(r["status"]):
             vtype = "車斗未依規定覆蓋防塵設施"
-        elif r["status"] == "ATTRIBUTED_MUDDY":
-            vtype = "🎯 運輸車輛帶泥污染 (科技執法舉證)"
         else:
-            vtype = "路面髒污污染"
+            vtype = "道路髒污污染"
         writer.writerow([
             r["id"],
             cam_name,

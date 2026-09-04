@@ -77,20 +77,8 @@ def init_db():
         if "location_name" not in alert_cols:
             cursor.execute("ALTER TABLE alerts ADD COLUMN location_name TEXT DEFAULT '花蓮市美崙營建管制站'")
 
-        # 校準歷史 video_records 違規次數，杜絕舊抽幀將車斗誤算至路污之歷史髒數據
-        cursor.execute('''
-            UPDATE video_records
-            SET muddy_count = (
-                SELECT COUNT(*) FROM alerts a 
-                WHERE a.video_file = video_records.filename 
-                AND (a.status LIKE '%MUDDY%' AND a.status NOT LIKE '%UNCOVERED%')
-            ),
-            uncovered_count = (
-                SELECT COUNT(*) FROM alerts a 
-                WHERE a.video_file = video_records.filename 
-                AND (a.status = 'UNCOVERED_TRUCK' OR a.status LIKE '%UNCOVERED%')
-            )
-        ''')
+        # 徹底移除二合一舉證單歷史數據
+        cursor.execute("DELETE FROM alerts WHERE status = 'ATTRIBUTED_MUDDY'")
 
         conn.commit()
 
