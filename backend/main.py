@@ -56,6 +56,13 @@ class SaveRefRequest(BaseModel):
     cam_id: Optional[str] = "cam_10"
     label: str
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    ico_path = Config.PROJECT_ROOT / "frontend" / "favicon.ico"
+    if ico_path.exists():
+        return FileResponse(ico_path, media_type="image/x-icon")
+    return Response(status_code=204)
+
 @app.get("/api/cameras")
 def get_cameras():
     cfg = Config.load_camera_config()

@@ -413,29 +413,29 @@ function fetchVideos() {
             }
             tbody.innerHTML = data.videos.map(v => `
                 <tr class="border-b border-slate-800/50 hover:bg-slate-800/60 transition cursor-pointer" onclick="openVideoModal('${v.filename}', ${v.muddy_count || 0}, ${v.uncovered_count || 0})">
-                    <td class="py-2.5 px-3 font-mono text-emerald-300 font-bold flex items-center space-x-1.5">
+                    <td class="py-2.5 px-3 font-mono text-emerald-300 font-bold flex items-center space-x-1.5 whitespace-nowrap">
                         <span>🎬</span>
                         <span>${v.filename}</span>
                     </td>
-                    <td class="py-2.5 px-3">
+                    <td class="py-2.5 px-3 whitespace-nowrap">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${v.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">
                             ${v.status}
                         </span>
                     </td>
-                    <td class="py-2.5 px-3">${v.total_sampled}</td>
-                    <td class="py-2.5 px-3">
+                    <td class="py-2.5 px-3 whitespace-nowrap font-mono">${v.total_sampled}</td>
+                    <td class="py-2.5 px-3 whitespace-nowrap">
                         <span class="px-2 py-0.5 rounded text-xs font-black ${v.muddy_count > 0 ? 'bg-red-950 text-red-400 border border-red-800' : 'text-slate-500'}">
                             ${v.muddy_count || 0}
                         </span>
                     </td>
-                    <td class="py-2.5 px-3">
+                    <td class="py-2.5 px-3 whitespace-nowrap">
                         <span class="px-2 py-0.5 rounded text-xs font-black ${v.uncovered_count > 0 ? 'bg-amber-950 text-amber-300 border border-amber-800' : 'text-slate-500'}">
                             ${v.uncovered_count || 0}
                         </span>
                     </td>
-                    <td class="py-2.5 px-3 text-slate-500">${v.processed_at || v.recorded_at || '--'}</td>
-                    <td class="py-2.5 px-3 text-right">
-                        <button class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded text-xs border border-slate-600 font-medium">
+                    <td class="py-2.5 px-3 text-slate-500 whitespace-nowrap font-mono text-[11px]">${v.processed_at || v.recorded_at || '--'}</td>
+                    <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                        <button class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded text-xs border border-slate-600 font-medium whitespace-nowrap">
                             🔍 詳情 / 回放
                         </button>
                     </td>
