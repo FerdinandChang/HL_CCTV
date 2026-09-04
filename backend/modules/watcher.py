@@ -1,4 +1,4 @@
-﻿import os
+import os
 import cv2
 import time
 import queue
@@ -146,14 +146,17 @@ class TSVideoWatcher:
                 video_sec = frame_idx / fps
                 _, stats = analyzer.analyze_frame(frame, video_file=p.name, video_sec=video_sec)
                 total_sampled += 1
-                if "MUDDY" in stats.get("status", ""):
+                # 統計所有違規事件 (包含道路泥污、車斗未覆蓋防塵設施)
+                stat_str = stats.get("status", "")
+                t_stat = stats.get("truck_bed", "")
+                if "MUDDY" in stat_str or "UNCOVERED" in t_stat or "VIOLATION" in stat_str:
                     muddy_count += 1
 
             frame_idx += 1
 
         cap.release()
         complete_video_record(p.name, total_sampled, muddy_count, status="COMPLETED")
-        print(f"[TS Watcher] 分析完成: {p.name} | 總抽幀: {total_sampled} | 髒污數: {muddy_count}")
+        print(f"[TS Watcher] 分析完成: {p.name} | 總抽幀: {total_sampled} | 違規事件數: {muddy_count}")
 
     def scan_historical_records(self):
         if not self.record_dir.exists():

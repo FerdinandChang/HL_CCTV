@@ -454,7 +454,7 @@ function openVideoModal(filename, muddyCount) {
     isPlaying = true;
 
     document.getElementById("modal-filename").textContent = filename;
-    document.getElementById("modal-muddy-count").textContent = `${muddyCount} 次`;
+    document.getElementById("modal-muddy-count").textContent = `${muddyCount || 0} 筆`;
     document.getElementById("modal-download-btn").href = `/api/videos/stream/${filename}`;
     document.getElementById("video-modal").classList.remove("hidden");
 
@@ -522,32 +522,54 @@ function closeVideoModal() {
 
 function loadVideoAlerts(filename) {
     const container = document.getElementById("modal-alerts-container");
+    const countEl = document.getElementById("modal-muddy-count");
     container.innerHTML = `<span class="text-xs text-slate-500">載入抓拍紀錄中...</span>`;
 
     fetch(`/api/videos/${filename}/alerts`)
         .then(r => r.json())
         .then(data => {
-            if (!data.alerts || data.alerts.length === 0) {
+            const alerts = data.alerts || [];
+            if (countEl) countEl.textContent = `${alerts.length} 筆`;
+
+            if (alerts.length === 0) {
                 container.innerHTML = `
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-1">
-                        <div class="text-emerald-400 font-bold text-xs">✅ 無路面髒污違規</div>
-                        <div class="text-[11px] text-slate-500">這 30 分鐘錄影路面維持乾淨。</div>
+                        <div class="text-emerald-400 font-bold text-xs">✅ 無違規事件記錄</div>
+                        <div class="text-[11px] text-slate-500">此 30 分鐘錄影全程合規（無路面泥污與車斗未覆蓋）。</div>
                     </div>
                 `;
                 return;
             }
 
-            container.innerHTML = data.alerts.map(a => {
+            container.innerHTML = alerts.map(a => {
                 const min = Math.floor(a.video_sec / 60);
                 const sec = Math.floor(a.video_sec % 60);
                 const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+
+                let tagTitle = "🚨 道路髒污污染";
+                let tagColor = "text-rose-400 font-bold";
+                let itemBorder = "border-rose-900/60 bg-rose-950/20";
+                let btnStyle = "bg-rose-950/80 hover:bg-rose-800 text-rose-200 border border-rose-700/60";
+
+                if (a.status === "UNCOVERED_TRUCK") {
+                    tagTitle = "⚠️ 車斗未覆蓋防塵設施";
+                    tagColor = "text-amber-400 font-bold";
+                    itemBorder = "border-amber-700/60 bg-amber-950/25";
+                    btnStyle = "bg-amber-950/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60";
+                } else if (a.status === "ATTRIBUTED_MUDDY") {
+                    tagTitle = "🎯 科技執法帶泥舉證 (二合一)";
+                    tagColor = "text-purple-300 font-black";
+                    itemBorder = "border-purple-600/70 bg-purple-950/30";
+                    btnStyle = "bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-600/60";
+                }
+
                 return `
-                    <div class="bg-slate-950 p-2 rounded-xl border border-red-900/60 flex space-x-2.5">
-                        <img src="/api/snapshots/${a.snapshot_file}" class="w-16 h-12 object-cover rounded-lg border border-slate-800 cursor-pointer" onclick="window.open('/api/snapshots/${a.snapshot_file}', '_blank')">
+                    <div class="p-2 rounded-xl border ${itemBorder} flex space-x-2.5 transition">
+                        <img src="/api/snapshots/${a.snapshot_file}" class="w-16 h-12 object-cover rounded-lg border border-slate-700 cursor-pointer hover:opacity-80 transition" onclick="window.open('/api/snapshots/${a.snapshot_file}', '_blank')" title="點擊放大快照">
                         <div class="flex-1 text-[11px] flex flex-col justify-center">
-                            <div class="font-bold text-red-400">髒污檢測 (${a.confidence.toFixed(1)}%)</div>
+                            <div class="${tagColor}">${tagTitle} (${a.confidence.toFixed(1)}%)</div>
                             <div class="text-slate-400 text-[10px]">時間: ${a.timestamp}</div>
-                            <button onclick="startStreamingAtSec(${a.video_sec})" class="mt-1 bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit">
+                            <button onclick="startStreamingAtSec(${a.video_sec})" class="mt-1 ${btnStyle} px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit shadow transition">
                                 ⏩ 跳至 ${timeStr}
                             </button>
                         </div>

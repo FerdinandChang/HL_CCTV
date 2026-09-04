@@ -1,4 +1,4 @@
-﻿import sqlite3
+import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
@@ -136,9 +136,20 @@ def get_video_records(limit=30):
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT * FROM video_records ORDER BY id DESC LIMIT ?
+            SELECT v.*, 
+                   (SELECT COUNT(*) FROM alerts a WHERE a.video_file = v.filename) AS actual_alert_count
+            FROM video_records v 
+            ORDER BY v.id DESC LIMIT ?
         ''', (limit,))
-        return [dict(row) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            # 整合實際 alerts 違規抓拍數 (包含路面泥污與車斗未覆蓋)
+            actual = max(d.get("muddy_count", 0), d.get("actual_alert_count", 0))
+            d["muddy_count"] = actual
+            result.append(d)
+        return result
 
 if __name__ == "__main__":
     init_db()
