@@ -8,6 +8,11 @@
     <link rel="shortcut icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <style>
         .pulse-alert {
             animation: pulse-red 1.5s infinite;
@@ -54,16 +59,26 @@
             border-color: #cbd5e1 !important;
         }
 
-        /* 2. 文字對比度全面修正 (杜絕淺色模式下文字發飄過淡) */
+        /* 2. 文字對比度修正 (僅覆蓋純文本，嚴禁覆蓋按鈕內的 text-white) */
         body.light-mode .text-slate-400 {
             color: #64748b !important;
         }
         body.light-mode .text-slate-300 {
             color: #334155 !important;
         }
-        body.light-mode .text-slate-200,
-        body.light-mode .text-white {
+        body.light-mode .text-slate-200 {
             color: #0f172a !important;
+        }
+        body.light-mode h1.text-white,
+        body.light-mode h2.text-white,
+        body.light-mode h3.text-white {
+            color: #0f172a !important;
+        }
+        /* 保證所有實心按鈕文字純白高對比，絕不發黑 */
+        body.light-mode button.text-white,
+        body.light-mode a.text-white,
+        body.light-mode .btn-keep-white {
+            color: #ffffff !important;
         }
         body.light-mode .text-slate-500 {
             color: #64748b !important;
@@ -227,6 +242,15 @@
         body.light-mode .btn-docs:hover {
             background-color: #e0e7ff !important;
         }
+        body.light-mode .btn-export {
+            background-color: #ecfdf5 !important;
+            color: #047857 !important;
+            border-color: #a7f3d0 !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        }
+        body.light-mode .btn-export:hover {
+            background-color: #d1fae5 !important;
+        }
         body.light-mode #theme-toggle-btn {
             background-color: #ffffff !important;
             color: #334155 !important;
@@ -251,6 +275,50 @@
         body.light-mode .btn-detail:hover {
             background-color: #f1f5f9 !important;
             color: #0f172a !important;
+        }
+
+        /* 8.1 最近警報卡片雙模式專用樣式 (徹底根除暗黑墨綠斑與淡字) */
+        .alert-card-muddy {
+            background-color: rgba(30, 41, 59, 0.8);
+            border-color: rgba(127, 29, 29, 0.5);
+        }
+        .alert-card-uncovered {
+            background-color: rgba(30, 41, 59, 0.85);
+            border-color: rgba(120, 53, 15, 0.6);
+        }
+        .alert-card-muddy .alert-title { color: #f87171; }
+        .alert-card-uncovered .alert-title { color: #fbbf24; }
+        .alert-gps-badge {
+            background-color: rgba(6, 78, 59, 0.6);
+            color: #34d399;
+            border-color: rgba(6, 95, 70, 0.6);
+        }
+        .alert-source-filename {
+            color: #34d399;
+        }
+
+        body.light-mode .alert-card-muddy {
+            background-color: #fff1f2 !important;
+            border-color: #fecdd3 !important;
+        }
+        body.light-mode .alert-card-muddy .alert-title {
+            color: #9f1239 !important;
+        }
+        body.light-mode .alert-card-uncovered {
+            background-color: #fffbeb !important;
+            border-color: #fde68a !important;
+        }
+        body.light-mode .alert-card-uncovered .alert-title {
+            color: #92400e !important;
+        }
+        body.light-mode .alert-gps-badge {
+            background-color: #ffffff !important;
+            color: #047857 !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+        }
+        body.light-mode .alert-source-filename {
+            color: #047857 !important;
         }
 
         /* 9. 彈窗 (Video Modal) 淺色適配 */
@@ -337,7 +405,7 @@
                 </div>
 
                 <!-- 報表匯出按鈕 -->
-                <a href="/api/reports/export" download class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg border border-emerald-500 text-xs font-bold shadow transition flex items-center space-x-1 whitespace-nowrap flex-shrink-0">
+                <a href="/api/reports/export" download class="btn-export bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg border border-emerald-500 text-xs font-bold shadow transition flex items-center space-x-1 whitespace-nowrap flex-shrink-0">
                     <span>📊 匯出報表</span>
                 </a>
 

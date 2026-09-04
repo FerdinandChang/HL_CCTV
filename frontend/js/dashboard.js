@@ -45,10 +45,16 @@ function applyTheme(theme) {
     const iconEl = document.getElementById('theme-icon');
     const textEl = document.getElementById('theme-text');
     if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+        document.body.classList.remove('dark');
         document.body.classList.add('light-mode');
         if (iconEl) iconEl.textContent = '🌙';
         if (textEl) textEl.textContent = '夜間模式';
     } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+        document.body.classList.add('dark');
         document.body.classList.remove('light-mode');
         if (iconEl) iconEl.textContent = '☀️';
         if (textEl) textEl.textContent = '白天模式';
@@ -387,26 +393,24 @@ function fetchAlerts() {
 
             list.innerHTML = data.alerts.map(a => {
                 let titleText = "🚨 道路髒污污染";
-                let titleColor = "text-rose-500 dark:text-rose-400 font-bold";
-                let borderStyle = "border-red-900/50 bg-slate-800/80 modal-card-muddy";
+                let cardClass = "alert-card-muddy";
 
                 if (a.status === "UNCOVERED_TRUCK" || (a.status && a.status.includes("UNCOVERED"))) {
                     titleText = "⚠️ 車斗未依規定覆蓋防塵設施";
-                    titleColor = "text-amber-500 dark:text-amber-400 font-bold";
-                    borderStyle = "border-amber-900/60 bg-slate-850 modal-card-uncovered";
+                    cardClass = "alert-card-uncovered";
                 }
 
                 const gpsStr = a.gps_lat ? `${a.gps_lat.toFixed(4)}, ${a.gps_lng.toFixed(4)}` : '23.9915, 121.6213';
                 return `
-                    <div class="flex space-x-3 p-2.5 rounded-xl border ${borderStyle} hover:opacity-90 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
+                    <div class="flex space-x-3 p-2.5 rounded-xl border ${cardClass} hover:opacity-90 transition cursor-pointer" onclick="openVideoModal('${a.video_file}', 1)">
                         <img src="/api/snapshots/${a.snapshot_file}" class="w-20 h-14 object-cover rounded-lg border border-slate-700">
                         <div class="text-xs flex-1 flex flex-col justify-center">
-                            <div class="${titleColor}">${titleText}</div>
-                            <div class="text-slate-400 text-[11px] flex items-center justify-between">
+                            <div class="alert-title font-bold">${titleText}</div>
+                            <div class="text-slate-400 text-[11px] flex items-center justify-between mt-0.5">
                                 <span>${a.timestamp}</span>
-                                <span class="text-emerald-600 dark:text-emerald-400 font-mono text-[10px] bg-emerald-50 dark:bg-emerald-950/60 px-1 rounded border border-emerald-200 dark:border-emerald-800/60">📍 ${gpsStr}</span>
+                                <span class="alert-gps-badge font-mono text-[10px] px-1.5 py-0.5 rounded border">📍 ${gpsStr}</span>
                             </div>
-                            ${a.video_file ? `<div class="text-emerald-600 dark:text-emerald-400 text-[10px]">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
+                            ${a.video_file ? `<div class="alert-source-filename text-[10px] mt-0.5 font-medium">來源: ${a.video_file} (${Math.round(a.video_sec)}秒)</div>` : ''}
                         </div>
                     </div>
                 `;
