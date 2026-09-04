@@ -74,9 +74,8 @@
         body.light-mode h3.text-white {
             color: #0f172a !important;
         }
-        /* 保證所有實心按鈕文字純白高對比，絕不發黑 */
+        /* 保證所有實心按鈕文字純白高對比，絕不發黑 (不包含自訂鏈結按鈕) */
         body.light-mode button.text-white,
-        body.light-mode a.text-white,
         body.light-mode .btn-keep-white {
             color: #ffffff !important;
         }
@@ -242,11 +241,26 @@
         body.light-mode .btn-docs:hover {
             background-color: #e0e7ff !important;
         }
+        .btn-export {
+            background-color: #047857;
+            border-color: #059669;
+        }
+        .btn-export,
+        .btn-export span {
+            color: #ffffff !important;
+        }
+        .btn-export:hover {
+            background-color: #059669;
+        }
         body.light-mode .btn-export {
             background-color: #ecfdf5 !important;
-            color: #047857 !important;
-            border-color: #a7f3d0 !important;
+            border-color: #6ee7b7 !important;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        }
+        body.light-mode .btn-export,
+        body.light-mode .btn-export span {
+            color: #064e3b !important;
+            font-weight: 800 !important;
         }
         body.light-mode .btn-export:hover {
             background-color: #d1fae5 !important;
@@ -405,7 +419,7 @@
                 </div>
 
                 <!-- 報表匯出按鈕 -->
-                <a href="/api/reports/export" download class="btn-export bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg border border-emerald-500 text-xs font-bold shadow transition flex items-center space-x-1 whitespace-nowrap flex-shrink-0">
+                <a href="/api/reports/export" download class="btn-export px-3 py-1.5 rounded-lg border text-xs font-bold shadow transition flex items-center space-x-1 whitespace-nowrap flex-shrink-0">
                     <span>📊 匯出報表</span>
                 </a>
 
