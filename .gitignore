@@ -52,3 +52,6 @@ output/snapshots/*
 *.swp
 Thumbs.db
 Desktop.ini
+
+*.zip
+
