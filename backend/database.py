@@ -77,6 +77,21 @@ def init_db():
         if "location_name" not in alert_cols:
             cursor.execute("ALTER TABLE alerts ADD COLUMN location_name TEXT DEFAULT '花蓮市美崙營建管制站'")
 
+        # 校準歷史 video_records 違規次數，杜絕舊抽幀將車斗誤算至路污之歷史髒數據
+        cursor.execute('''
+            UPDATE video_records
+            SET muddy_count = (
+                SELECT COUNT(*) FROM alerts a 
+                WHERE a.video_file = video_records.filename 
+                AND (a.status LIKE '%MUDDY%' AND a.status NOT LIKE '%UNCOVERED%')
+            ),
+            uncovered_count = (
+                SELECT COUNT(*) FROM alerts a 
+                WHERE a.video_file = video_records.filename 
+                AND (a.status = 'UNCOVERED_TRUCK' OR a.status LIKE '%UNCOVERED%')
+            )
+        ''')
+
         conn.commit()
 
 def save_alert_event(cam_id, status, confidence, edge_density, snapshot_file="", video_file="", video_sec=0.0, gps_lat=None, gps_lng=None, location_name=""):
@@ -169,8 +184,8 @@ def get_video_records(limit=30):
         cursor = conn.cursor()
         cursor.execute('''
             SELECT v.*, 
-                   (SELECT COUNT(*) FROM alerts a WHERE a.video_file = v.filename AND (a.status = 'MUDDY' OR a.status = 'ATTRIBUTED_MUDDY')) AS actual_muddy_count,
-                   (SELECT COUNT(*) FROM alerts a WHERE a.video_file = v.filename AND a.status = 'UNCOVERED_TRUCK') AS actual_uncovered_count
+                   (SELECT COUNT(*) FROM alerts a WHERE a.video_file = v.filename AND (a.status LIKE '%MUDDY%' AND a.status NOT LIKE '%UNCOVERED%')) AS actual_muddy_count,
+                   (SELECT COUNT(*) FROM alerts a WHERE a.video_file = v.filename AND (a.status = 'UNCOVERED_TRUCK' OR a.status LIKE '%UNCOVERED%')) AS actual_uncovered_count
             FROM video_records v 
             ORDER BY v.id DESC LIMIT ?
         ''', (limit,))
@@ -180,23 +195,14 @@ def get_video_records(limit=30):
             d = dict(r)
             actual_muddy = d.get("actual_muddy_count", 0)
             actual_uncovered = d.get("actual_uncovered_count", 0)
-            rec_muddy = d.get("muddy_count", 0) or 0
             rec_uncovered = d.get("uncovered_count", 0) or 0
 
-            # 獨立拆分統計：
-            # 1. 車斗未覆蓋次數
-            final_uncovered = max(rec_uncovered, actual_uncovered)
+            # 違規次數精準對齊 alerts 違規抓拍快照筆數：
+            # 1. 道路髒污：以實際抓拍告警筆數為準（若無路污抓拍則為 0，徹底杜絕抽幀時車斗違規污染路污計數之舊數據）
+            d["muddy_count"] = actual_muddy
 
-            # 2. 路污次數（若歷史舊資料誤將車斗違規計入 rec_muddy，透過 alerts 實際分類校正隔離）
-            if actual_uncovered > 0 and actual_muddy == 0 and rec_muddy == actual_uncovered:
-                final_muddy = 0
-            elif actual_muddy > 0:
-                final_muddy = actual_muddy
-            else:
-                final_muddy = rec_muddy
-
-            d["muddy_count"] = final_muddy
-            d["uncovered_count"] = final_uncovered
+            # 2. 車斗未覆蓋：以實際抓拍告警筆數或紀錄為準
+            d["uncovered_count"] = actual_uncovered if actual_uncovered > 0 else rec_uncovered
             result.append(d)
         return result
 

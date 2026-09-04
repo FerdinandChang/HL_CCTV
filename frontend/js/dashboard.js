@@ -418,6 +418,9 @@ function fetchAlerts() {
         });
 }
 
+let currentModalAlerts = [];
+let currentModalTab = 'all';
+
 function fetchVideos() {
     fetch("/api/videos?limit=15")
         .then(r => r.json())
@@ -429,7 +432,7 @@ function fetchVideos() {
                 return;
             }
             tbody.innerHTML = data.videos.map(v => `
-                <tr class="border-b border-slate-800/50 hover:bg-slate-800/60 transition cursor-pointer" onclick="openVideoModal('${v.filename}', ${v.muddy_count || 0}, ${v.uncovered_count || 0})">
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/60 transition cursor-pointer" onclick="openVideoModal('${v.filename}', 'all')">
                     <td class="py-2.5 px-3 font-mono text-emerald-300 font-bold flex items-center space-x-1.5 whitespace-nowrap">
                         <span>🎬</span>
                         <span>${v.filename}</span>
@@ -440,18 +443,18 @@ function fetchVideos() {
                         </span>
                     </td>
                     <td class="py-2.5 px-2 text-center whitespace-nowrap font-mono text-slate-300">${v.total_sampled}</td>
-                    <td class="py-2.5 px-2 text-center whitespace-nowrap">
-                        <span class="px-2 py-0.5 rounded text-xs font-black ${v.muddy_count > 0 ? 'bg-red-950 text-red-400 border border-red-800' : 'text-slate-500'}">
-                            ${v.muddy_count || 0}
+                    <td class="py-2.5 px-2 text-center whitespace-nowrap" onclick="event.stopPropagation(); openVideoModal('${v.filename}', 'muddy')" title="點擊檢視本片道路髒污抓拍">
+                        <span class="px-2.5 py-0.5 rounded text-xs font-black inline-flex items-center space-x-1 hover:scale-110 transition shadow-sm ${v.muddy_count > 0 ? 'bg-red-950 text-red-400 border border-red-800 cursor-pointer' : 'text-slate-500'}">
+                            <span>${v.muddy_count || 0}</span>
                         </span>
                     </td>
-                    <td class="py-2.5 px-2 text-center whitespace-nowrap">
-                        <span class="px-2 py-0.5 rounded text-xs font-black ${v.uncovered_count > 0 ? 'bg-amber-950 text-amber-300 border border-amber-800' : 'text-slate-500'}">
-                            ${v.uncovered_count || 0}
+                    <td class="py-2.5 px-2 text-center whitespace-nowrap" onclick="event.stopPropagation(); openVideoModal('${v.filename}', 'uncovered')" title="點擊檢視本片車斗違規抓拍">
+                        <span class="px-2.5 py-0.5 rounded text-xs font-black inline-flex items-center space-x-1 hover:scale-110 transition shadow-sm ${v.uncovered_count > 0 ? 'bg-amber-950 text-amber-300 border border-amber-800 cursor-pointer' : 'text-slate-500'}">
+                            <span>${v.uncovered_count || 0}</span>
                         </span>
                     </td>
                     <td class="py-2.5 px-2.5 text-center text-slate-400 whitespace-nowrap font-mono text-[11px]">${v.processed_at || v.recorded_at || '--'}</td>
-                    <td class="py-2.5 px-2.5 text-center whitespace-nowrap">
+                    <td class="py-2.5 px-2.5 text-center whitespace-nowrap" onclick="event.stopPropagation(); openVideoModal('${v.filename}', 'all')">
                         <button class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded text-xs border border-slate-600 font-medium whitespace-nowrap shadow-sm">
                             🔍 詳情回放
                         </button>
@@ -468,17 +471,15 @@ function triggerScan() {
 }
 
 // ── 全瀏覽器相容 H.265 即時回放播放器控制 ────────────────────────────────
-function openVideoModal(filename, muddyCount, uncoveredCount) {
+function openVideoModal(filename, initialTab = 'all') {
     if (!filename || filename === "null" || filename === "--") return;
     
     activeVideoFilename = filename;
     currentPlaySec = 0;
     isPlaying = true;
+    currentModalTab = initialTab || 'all';
 
     document.getElementById("modal-filename").textContent = filename;
-    const badgeMuddy = `<span class="text-red-400">🚨 路污: ${muddyCount || 0}</span>`;
-    const badgeUncovered = `<span class="text-amber-400">⚠️ 車斗: ${uncoveredCount || 0}</span>`;
-    document.getElementById("modal-muddy-count").innerHTML = `${badgeMuddy} &nbsp;|&nbsp; ${badgeUncovered}`;
     document.getElementById("modal-download-btn").href = `/api/videos/stream/${filename}`;
     document.getElementById("video-modal").classList.remove("hidden");
 
@@ -546,59 +547,158 @@ function closeVideoModal() {
 
 function loadVideoAlerts(filename) {
     const container = document.getElementById("modal-alerts-container");
-    const countEl = document.getElementById("modal-muddy-count");
     container.innerHTML = `<span class="text-xs text-slate-500">載入抓拍紀錄中...</span>`;
 
     fetch(`/api/videos/${filename}/alerts`)
         .then(r => r.json())
         .then(data => {
-            const alerts = data.alerts || [];
-            if (countEl) countEl.textContent = `${alerts.length} 筆`;
+            currentModalAlerts = data.alerts || [];
 
-            if (alerts.length === 0) {
-                container.innerHTML = `
-                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-1">
-                        <div class="text-emerald-400 font-bold text-xs">✅ 無違規事件記錄</div>
-                        <div class="text-[11px] text-slate-500">此 30 分鐘錄影全程合規（無路面泥污與車斗未覆蓋）。</div>
-                    </div>
+            const muddyList = currentModalAlerts.filter(a => 
+                (a.status && a.status.includes('MUDDY') && !a.status.includes('UNCOVERED')) || 
+                (a.status && a.status.includes('ATTRIBUTED_MUDDY'))
+            );
+            const uncoveredList = currentModalAlerts.filter(a => 
+                a.status === 'UNCOVERED_TRUCK' || (a.status && a.status.includes('UNCOVERED'))
+            );
+
+            // 更新頁籤計數徽章
+            const cntAll = document.getElementById("modal-cnt-all");
+            const cntMuddy = document.getElementById("modal-cnt-muddy");
+            const cntUncovered = document.getElementById("modal-cnt-uncovered");
+            if (cntAll) cntAll.textContent = currentModalAlerts.length;
+            if (cntMuddy) cntMuddy.textContent = muddyList.length;
+            if (cntUncovered) cntUncovered.textContent = uncoveredList.length;
+
+            // 頂部統計欄位
+            const countEl = document.getElementById("modal-muddy-count");
+            if (countEl) {
+                countEl.innerHTML = `
+                    <span class="text-rose-400 font-bold">🚨 路污: ${muddyList.length}</span>
+                    <span class="text-slate-600 mx-1">|</span>
+                    <span class="text-amber-400 font-bold">⚠️ 車斗: ${uncoveredList.length}</span>
                 `;
-                return;
             }
 
-            container.innerHTML = alerts.map(a => {
-                const min = Math.floor(a.video_sec / 60);
-                const sec = Math.floor(a.video_sec % 60);
-                const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-
-                let tagTitle = "🚨 道路髒污污染";
-                let tagColor = "text-rose-400 font-bold";
-                let itemBorder = "border-rose-900/60 bg-rose-950/20";
-                let btnStyle = "bg-rose-950/80 hover:bg-rose-800 text-rose-200 border border-rose-700/60";
-
-                if (a.status === "UNCOVERED_TRUCK") {
-                    tagTitle = "⚠️ 車斗未覆蓋防塵設施";
-                    tagColor = "text-amber-400 font-bold";
-                    itemBorder = "border-amber-700/60 bg-amber-950/25";
-                    btnStyle = "bg-amber-950/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60";
-                } else if (a.status === "ATTRIBUTED_MUDDY") {
-                    tagTitle = "🎯 科技執法帶泥舉證 (二合一)";
-                    tagColor = "text-purple-300 font-black";
-                    itemBorder = "border-purple-600/70 bg-purple-950/30";
-                    btnStyle = "bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-600/60";
-                }
-
-                return `
-                    <div class="p-2 rounded-xl border ${itemBorder} flex space-x-2.5 transition">
-                        <img src="/api/snapshots/${a.snapshot_file}" class="w-16 h-12 object-cover rounded-lg border border-slate-700 cursor-pointer hover:opacity-80 transition" onclick="window.open('/api/snapshots/${a.snapshot_file}', '_blank')" title="點擊放大快照">
-                        <div class="flex-1 text-[11px] flex flex-col justify-center">
-                            <div class="${tagColor}">${tagTitle} (${a.confidence.toFixed(1)}%)</div>
-                            <div class="text-slate-400 text-[10px]">時間: ${a.timestamp}</div>
-                            <button onclick="startStreamingAtSec(${a.video_sec})" class="mt-1 ${btnStyle} px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit shadow transition">
-                                ⏩ 跳至 ${timeStr}
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join("");
+            // 渲染當前選擇之頁籤
+            switchModalTab(currentModalTab);
         });
+}
+
+function switchModalTab(tab) {
+    currentModalTab = tab || 'all';
+
+    const tabAll = document.getElementById("modal-tab-all");
+    const tabMuddy = document.getElementById("modal-tab-muddy");
+    const tabUncovered = document.getElementById("modal-tab-uncovered");
+
+    // 重設樣式
+    if (tabAll) tabAll.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition text-slate-400 hover:bg-slate-800/60";
+    if (tabMuddy) tabMuddy.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition text-rose-400 hover:bg-slate-800/60";
+    if (tabUncovered) tabUncovered.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition text-amber-400 hover:bg-slate-800/60";
+
+    // 選中高亮
+    if (currentModalTab === 'all' && tabAll) {
+        tabAll.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-slate-800 text-white shadow-sm";
+    } else if (currentModalTab === 'muddy' && tabMuddy) {
+        tabMuddy.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-rose-950 text-rose-300 border border-rose-800 shadow-sm";
+    } else if (currentModalTab === 'uncovered' && tabUncovered) {
+        tabUncovered.className = "flex-1 py-1 px-1.5 rounded-lg font-bold text-center transition bg-amber-950 text-amber-300 border border-amber-800 shadow-sm";
+    }
+
+    const container = document.getElementById("modal-alerts-container");
+    if (!container) return;
+
+    const muddyList = currentModalAlerts.filter(a => 
+        (a.status && a.status.includes('MUDDY') && !a.status.includes('UNCOVERED')) || 
+        (a.status && a.status.includes('ATTRIBUTED_MUDDY'))
+    );
+    const uncoveredList = currentModalAlerts.filter(a => 
+        a.status === 'UNCOVERED_TRUCK' || (a.status && a.status.includes('UNCOVERED'))
+    );
+
+    let displayList = currentModalAlerts;
+    if (currentModalTab === 'muddy') {
+        displayList = muddyList;
+    } else if (currentModalTab === 'uncovered') {
+        displayList = uncoveredList;
+    }
+
+    if (displayList.length === 0) {
+        if (currentModalTab === 'muddy') {
+            container.innerHTML = `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-2">
+                    <div class="text-rose-400 font-bold text-xs">🚨 本片無道路髒污違規紀錄</div>
+                    <div class="text-[11px] text-slate-400 leading-relaxed">
+                        經 AI 抽幀比對，此 30 分鐘路面乾淨未達污染標準。<br>
+                        ${uncoveredList.length > 0 ? `
+                            <button onclick="switchModalTab('uncovered')" class="mt-2 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800 px-3 py-1 rounded text-xs font-bold transition">
+                                👉 本片另有 ${uncoveredList.length} 筆【車斗未覆蓋】，點此檢視
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        } else if (currentModalTab === 'uncovered') {
+            container.innerHTML = `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-2">
+                    <div class="text-amber-400 font-bold text-xs">⚠️ 本片無車斗未覆蓋違規紀錄</div>
+                    <div class="text-[11px] text-slate-400 leading-relaxed">
+                        行經卡車車斗防塵網均依規定妥善覆蓋。<br>
+                        ${muddyList.length > 0 ? `
+                            <button onclick="switchModalTab('muddy')" class="mt-2 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 px-3 py-1 rounded text-xs font-bold transition">
+                                👉 本片另有 ${muddyList.length} 筆【道路髒污事件】，點此檢視
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-1">
+                    <div class="text-emerald-400 font-bold text-xs">✅ 無違規事件記錄</div>
+                    <div class="text-[11px] text-slate-500">此 30 分鐘錄影全程合規（無路面泥污與車斗未覆蓋）。</div>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    container.innerHTML = displayList.map(a => {
+        const min = Math.floor(a.video_sec / 60);
+        const sec = Math.floor(a.video_sec % 60);
+        const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+
+        let tagTitle = "🚨 道路髒污污染";
+        let tagColor = "text-rose-400 font-bold";
+        let itemBorder = "border-rose-900/60 bg-rose-950/20";
+        let btnStyle = "bg-rose-950/80 hover:bg-rose-800 text-rose-200 border border-rose-700/60";
+
+        if (a.status === "UNCOVERED_TRUCK" || (a.status && a.status.includes("UNCOVERED"))) {
+            tagTitle = "⚠️ 車斗未覆蓋防塵設施";
+            tagColor = "text-amber-400 font-bold";
+            itemBorder = "border-amber-700/60 bg-amber-950/25";
+            btnStyle = "bg-amber-950/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60";
+        } else if (a.status === "ATTRIBUTED_MUDDY") {
+            tagTitle = "🎯 科技執法帶泥舉證 (二合一)";
+            tagColor = "text-purple-300 font-black";
+            itemBorder = "border-purple-600/70 bg-purple-950/30";
+            btnStyle = "bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-600/60";
+        }
+
+        const confVal = a.confidence ? a.confidence.toFixed(1) : '95.0';
+
+        return `
+            <div class="p-2 rounded-xl border ${itemBorder} flex space-x-2.5 transition">
+                <img src="/api/snapshots/${a.snapshot_file}" class="w-16 h-12 object-cover rounded-lg border border-slate-700 cursor-pointer hover:opacity-80 transition" onclick="window.open('/api/snapshots/${a.snapshot_file}', '_blank')" title="點擊放大快照">
+                <div class="flex-1 text-[11px] flex flex-col justify-center">
+                    <div class="${tagColor}">${tagTitle} (${confVal}%)</div>
+                    <div class="text-slate-400 text-[10px]">時間: ${a.timestamp}</div>
+                    <button onclick="startStreamingAtSec(${a.video_sec})" class="mt-1 ${btnStyle} px-2 py-0.5 rounded text-[10px] font-mono font-bold w-fit shadow transition">
+                        ⏩ 跳至 ${timeStr}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join("");
 }

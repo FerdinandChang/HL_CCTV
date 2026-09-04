@@ -149,14 +149,16 @@ class TSVideoWatcher:
                 total_sampled += 1
                 
                 stat_str = stats.get("status", "")
-                t_stat = stats.get("truck_bed", "")
+                t_stat = stats.get("truck_status", "")
 
-                # 1. 道路髒污污染獨立計數
-                if "MUDDY" in stat_str or "VIOLATION" in stat_str:
+                # 1. 道路髒污污染獨立計數（排除車斗違規造成的 VIOLATION 字串誤判）
+                is_muddy = ("MUDDY" in stat_str and "UNCOVERED" not in stat_str) or "ATTRIBUTED_MUDDY" in stat_str
+                if is_muddy:
                     muddy_count += 1
 
                 # 2. 車斗未覆蓋獨立計數
-                if "UNCOVERED" in t_stat or "UNCOVERED_TRUCK" in stat_str:
+                is_uncovered = "UNCOVERED" in t_stat or "UNCOVERED" in stat_str
+                if is_uncovered:
                     uncovered_count += 1
 
             frame_idx += 1
