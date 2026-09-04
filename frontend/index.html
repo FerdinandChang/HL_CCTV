@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -115,9 +115,9 @@
         </header>
 
         <!-- 主體網格 -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
             <!-- 視訊與 ROI 區域 (佔 2 欄) -->
-            <div class="lg:col-span-2 space-y-4">
+            <div class="lg:col-span-2 flex flex-col space-y-4">
                 <div id="video-wrapper" class="bg-slate-900 p-2 rounded-2xl border border-slate-800 shadow-2xl relative">
                     <div class="relative bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center">
                         <!-- 即時 MJPEG 影像 -->
@@ -143,8 +143,8 @@
                     </div>
                 </div>
 
-                <!-- 錄影檔 (.ts) 批次分析進度表 (固定高度 440px 與右側警報卡片嚴格齊平) -->
-                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 h-[440px] flex flex-col">
+                <!-- 錄影檔 (.ts) 批次分析進度表 (flex-1 與右側警報卡片底部 100% 嚴格等距齊平) -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex-1 flex flex-col min-h-[380px]">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-sm font-bold text-slate-300 flex items-center">
                             <span>📁 30 分鐘 .ts 錄影檔分析清單</span>
@@ -172,7 +172,7 @@
             </div>
 
             <!-- 右側即時狀態與教學面板 (佔 1 欄) -->
-            <div class="space-y-4">
+            <div class="flex flex-col space-y-4">
                 <!-- 硬碟容量健康狀態卡片 -->
                 <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
                     <div class="flex justify-between items-center mb-1">
@@ -264,8 +264,8 @@
                     </div>
                 </div>
 
-                <!-- 最近警報事件與快照簿 (固定高度 440px 與左側錄影清單嚴格齊平) -->
-                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl h-[440px] flex flex-col">
+                <!-- 最近警報事件與快照簿 (flex-1 與左側錄影清單底部 100% 嚴格等距齊平) -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl flex-1 flex flex-col min-h-[380px]">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-sm font-bold text-slate-300">🚨 最近路污/車斗警報截圖</h3>
                         <span id="alert-count" class="text-xs bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-bold">0 筆</span>
